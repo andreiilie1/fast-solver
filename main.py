@@ -79,3 +79,32 @@ print(M.toarray())
 print(*nablaValueVector, sep=' ')
 # print(*rowList, sep=' ')
 # print(*colList, sep=' ')
+
+# The development plan is as follows:
+# 1) Gauss-Seidel, 2) Jacobi, 3) Steepest Descent, 4) Gauss Elimination
+# 5) Encapsulate the whole state in a class to which we can pass as paramters
+#    the functions for the border values and for the nabla values so we are able
+#    to instantiate it for different problems and test the efficiency easier
+
+# Sample output for N = 4 (we're showing the matrix and the nabla vector)
+
+
+# Enter inverse of sample rate
+# 4
+# [[ 1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0]
+#  [ 0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0]
+#  [ 0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0]
+#  [ 0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0]
+#  [ 0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0]
+#  [ 0  0  0  0  0  4 -1  0  0 -1  0  0  0  0  0  0]
+#  [ 0  0  0  0  0 -1  4  0  0  0 -1  0  0  0  0  0]
+#  [ 0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0]
+#  [ 0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0]
+#  [ 0  0  0  0  0 -1  0  0  0  4 -1  0  0  0  0  0]
+#  [ 0  0  0  0  0  0 -1  0  0 -1  4  0  0  0  0  0]
+#  [ 0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0]
+#  [ 0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0]
+#  [ 0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0]
+#  [ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0]
+#  [ 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1]]
+# 0.0625 0.0625 0.0625 0.0625 0.0625 0.125 0.125 0.0625 0.0625 0.125 0.125 0.0625 0.0625 0.0625 0.0625 0.0625
