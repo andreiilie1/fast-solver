@@ -28,7 +28,7 @@ def isOnBorder(i, j):
 
 # Get the coordinates of the variable around which the row-th row is created
 def getCoordinates(row):
-	return row / N, row % N
+	return int(row / N), row % N
 
 # Get the row of a(i, j)'s equation
 def getRow(i, j):
@@ -44,18 +44,23 @@ def computeRow(row):
 		# The value of the border on point x/N, y/N is known, so append the equation variable = value to the system
 		nablaValueVector.append(borderFunction(x / N, y / N))	
 	else:
+		value = nablaFunction(x / N, y / N)
 		rowList.append(row)
 		colList.append(row)
 		dataList.append(4)
 		for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-			if(not (isOnBorder(x + dX, y + dY))):
+			if(not(isOnBorder(x + dX, y + dY))):
 				rowList.append(row)
 				colList.append(getRow(x + dX, y + dY))
 				dataList.append(-1)
+			else:
+				localValue = borderFunction((x + dX) / N, (y + dY)/N)
+				value += localValue
+		nablaValueVector.append(value)
 
 
 N = int(input("Enter inverse of sample rate\n"))
-h = 1 / N
+h = 1.0 / N
 
 rowList = []
 colList = []
@@ -67,4 +72,10 @@ for currentRow in range(N * N):
 
 # Instantiate sparse matrix M according to data kept in (rowList, colList, dataList)
 M = csr_matrix((np.array(dataList), (np.array(rowList), np.array(colList))), shape = (N * N, N * N))
+
+# Next lines are for debugging purpose
+
 print(M.toarray())
+print(*nablaValueVector, sep=' ')
+# print(*rowList, sep=' ')
+# print(*colList, sep=' ')
