@@ -2,8 +2,22 @@ import numpy as np
 from scipy.sparse import *
 from scipy import *
 
-# Current version assumes the value on the border is 1
-# Curreny version assumes the nabla operator of f is 0 everywhere
+# We construct matrix M to approximate the solution of a differential equation
+# We'll get the equation Mx = nablaValueVector and try to solve it by different methods
+# The scope is to get a fast solver for a class of differential equations
+
+# Value of the border function on values x,y
+def borderFunction(x,y):
+	value = 1
+	return value * h * h
+
+# Nabla value of the differential equation at points x, y
+def nablaFunction(x,y):
+	value = 0
+	return value * h * h
+
+# NablaValueVector from Mx = nablaValueVector
+nablaValueVector = []
 
 # Check if a(i,j) is on border
 def isOnBorder(i, j):
@@ -27,17 +41,21 @@ def computeRow(row):
 		rowList.append(row)
 		colList.append(row)
 		dataList.append(1)
+		# The value of the border on point x/N, y/N is known, so append the equation variable = value to the system
+		nablaValueVector.append(borderFunction(x / N, y / N))	
 	else:
 		rowList.append(row)
 		colList.append(row)
 		dataList.append(4)
 		for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-			rowList.append(row)
-			colList.append(getRow(x + dX, y + dY))
-			dataList.append(-1)
+			if(not (isOnBorder(x + dX, y + dY))):
+				rowList.append(row)
+				colList.append(getRow(x + dX, y + dY))
+				dataList.append(-1)
 
 
-N = input("Enter inverse of sample rate\n")
+N = int(input("Enter inverse of sample rate\n"))
+h = 1 / N
 
 rowList = []
 colList = []
