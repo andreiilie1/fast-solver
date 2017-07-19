@@ -2,14 +2,32 @@ import numpy as np
 from scipy.sparse import *
 from scipy import *
 
+#TODO: function JacobiIteration(D,R,b) to solve Mx=b
+
 # We construct matrix M to approximate the solution of a differential equation
 # We'll get the equation Mx = nablaValueVector and try to solve it by different methods
 # The scope is to get a fast solver for a class of differential equations
 
+def JacobiIterate(D,R,b,N):
+	x = []
+	d = D.diagonal()
+	print("Diagonal: ",d)
+	# Initial guess is x = (0,0,...0)
+	for i in range(N):
+		x.append(0)
+	# print("Current guess: ",x)
+	# Iterate for 50 times
+	for i in range(1000):
+		y = R.dot(x)
+		r = np.subtract(b,y)
+		x = [r_i / d_i for r_i, d_i in zip(r, d)]
+		# print("Current guess: ",x)
+	return x
+
 # Value of the border function on values x,y
 def borderFunction(x,y):
 	value = 1
-	return value * h * h
+	return value
 
 # Nabla value of the differential equation at points x, y
 def nablaFunction(x,y):
@@ -42,17 +60,32 @@ def computeRow(row):
 		colList.append(row)
 		dataList.append(1)
 		# The value of the border on point x/N, y/N is known, so append the equation variable = value to the system
-		nablaValueVector.append(borderFunction(x / N, y / N))	
+		nablaValueVector.append(borderFunction(x / N, y / N))
+
+		# Add entry to Diagonal component of the matrix
+		rowListDiagonal.append(row)
+		colListDiagonal.append(row)
+		dataListDiagonal.append(1)
 	else:
-		value = nablaFunction(x / N, y / N)
+		value = - nablaFunction(x / N, y / N)
 		rowList.append(row)
 		colList.append(row)
 		dataList.append(4)
+
+		# Add entry to Diagonal component of the matrix
+		rowListDiagonal.append(row)
+		colListDiagonal.append(row)
+		dataListDiagonal.append(4)
+
 		for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
 			if(not(isOnBorder(x + dX, y + dY))):
 				rowList.append(row)
 				colList.append(getRow(x + dX, y + dY))
 				dataList.append(-1)
+
+				rowListRemainder.append(row)
+				colListRemainder.append(getRow(x + dX, y + dY))
+				dataListRemainder.append(-1)
 			else:
 				localValue = borderFunction((x + dX) / N, (y + dY)/N)
 				value += localValue
@@ -66,17 +99,35 @@ rowList = []
 colList = []
 dataList = []
 
-# Process the entries of each row to create matrix M
+rowListDiagonal = []
+colListDiagonal = []
+dataListDiagonal = []
+
+rowListRemainder = []
+colListRemainder = []
+dataListRemainder = []
+
+# Process the entries of each row to create matrices M, D, R
 for currentRow in range(N * N):
 	computeRow(currentRow)
 
 # Instantiate sparse matrix M according to data kept in (rowList, colList, dataList)
 M = csr_matrix((np.array(dataList), (np.array(rowList), np.array(colList))), shape = (N * N, N * N))
+D = csr_matrix((np.array(dataListDiagonal), (np.array(rowListDiagonal), np.array(colListDiagonal))), shape = (N * N, N * N))
+R = csr_matrix((np.array(dataListRemainder), (np.array(rowListRemainder), np.array(colListRemainder))), shape = (N * N, N * N))
+
+solution = JacobiIterate(D, R, nablaValueVector, N * N)
 
 # Next lines are for debugging purpose
 
-print(M.toarray())
-print(*nablaValueVector, sep=' ')
+print(solution)
+
+# print(M.toarray())
+# print(D.toarray())
+# print(R.toarray())
+#
+# print(nablaValueVector)
+# print(M.data())
 # print(*rowList, sep=' ')
 # print(*colList, sep=' ')
 
