@@ -2,7 +2,7 @@ import numpy as np
 from scipy.sparse import *
 from scipy import *
 
-#TODO: function JacobiIteration(D,R,b) to solve Mx=b
+# TODO: function JacobiIteration(D,R,b) to solve Mx=b
 
 # We construct matrix M to approximate the solution of a differential equation
 # We'll get the equation Mx = nablaValueVector and try to solve it by different methods
@@ -26,6 +26,7 @@ def JacobiIterate(D,R,b,N):
 
 # Value of the border function on values x,y
 def borderFunction(x,y):
+	# Assert (x,y) is on border
 	value = 1
 	return value
 
@@ -66,6 +67,10 @@ def computeRow(row):
 		rowListDiagonal.append(row)
 		colListDiagonal.append(row)
 		dataListDiagonal.append(1)
+
+		rowListLower.append(row)
+		colListLower.append(row)
+		dataListLower.append(1)
 	else:
 		value = - nablaFunction(x / N, y / N)
 		rowList.append(row)
@@ -77,6 +82,10 @@ def computeRow(row):
 		colListDiagonal.append(row)
 		dataListDiagonal.append(4)
 
+		rowListLower.append(row)
+		colListLower.append(row)
+		dataListLower.append(4)
+
 		for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
 			if(not(isOnBorder(x + dX, y + dY))):
 				rowList.append(row)
@@ -86,6 +95,16 @@ def computeRow(row):
 				rowListRemainder.append(row)
 				colListRemainder.append(getRow(x + dX, y + dY))
 				dataListRemainder.append(-1)
+
+				if(row < getRow(x + dX, y + dY)):
+					rowListUpper.append(row)
+					colListUpper.append(getRow(x + dX, y + dY))
+					dataListUpper.append(-1)
+				else:
+					rowListLower.append(row)
+					colListLower.append(getRow(x + dX, y + dY))
+					dataListLower.append(-1)
+
 			else:
 				localValue = borderFunction((x + dX) / N, (y + dY)/N)
 				value += localValue
@@ -107,14 +126,28 @@ rowListRemainder = []
 colListRemainder = []
 dataListRemainder = []
 
+rowListUpper = []
+colListUpper = []
+dataListUpper = []
+
+rowListLower = []
+colListLower = []
+dataListLower = []
+
 # Process the entries of each row to create matrices M, D, R
 for currentRow in range(N * N):
 	computeRow(currentRow)
 
 # Instantiate sparse matrix M according to data kept in (rowList, colList, dataList)
 M = csr_matrix((np.array(dataList), (np.array(rowList), np.array(colList))), shape = (N * N, N * N))
+
+# Diagonal and remainging matrices D, R with D + R = M
 D = csr_matrix((np.array(dataListDiagonal), (np.array(rowListDiagonal), np.array(colListDiagonal))), shape = (N * N, N * N))
 R = csr_matrix((np.array(dataListRemainder), (np.array(rowListRemainder), np.array(colListRemainder))), shape = (N * N, N * N))
+
+# Lower and strictly upper matrices L, U with L + U = M
+L = csr_matrix((np.array(dataListLower), (np.array(rowListLower), np.array(colListLower))), shape = (N * N, N * N))
+U = csr_matrix((np.array(dataListUpper), (np.array(rowListUpper), np.array(colListUpper))), shape = (N * N, N * N))
 
 solution = JacobiIterate(D, R, nablaValueVector, N * N)
 
@@ -122,9 +155,11 @@ solution = JacobiIterate(D, R, nablaValueVector, N * N)
 
 print(solution)
 
-# print(M.toarray())
-# print(D.toarray())
-# print(R.toarray())
+print(M.toarray())
+print(D.toarray())
+print(R.toarray())
+print(U.toarray())
+print(L.toarray())
 #
 # print(nablaValueVector)
 # print(M.data())
