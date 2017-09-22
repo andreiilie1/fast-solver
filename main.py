@@ -8,20 +8,37 @@ from scipy import *
 # We'll get the equation Mx = nablaValueVector and try to solve it by different methods
 # The scope is to get a fast solver for a class of differential equations
 
-def JacobiIterate(D,R,b,N):
+globalIterationConstant = 50
+
+def JacobiIterate(D,R,b):
 	x = []
 	d = D.diagonal()
-	print("Diagonal: ",d)
+	iterationConstant = globalIterationConstant
 	# Initial guess is x = (0,0,...0)
-	for i in range(N):
+	for i in range(D.shape[0]):
 		x.append(0)
-	# print("Current guess: ",x)
-	# Iterate for 50 times
-	for i in range(1000):
+	# Iterate constant number of times (TODO: iterate while big error Mx-b)
+	for i in range(iterationConstant):
 		y = R.dot(x)
 		r = np.subtract(b,y)
 		x = [r_i / d_i for r_i, d_i in zip(r, d)]
-		# print("Current guess: ",x)
+	return x
+
+def GaussSeidelIterate(L,U,b):
+	x = []
+	d = L.diagonal()
+	iterationConstant = globalIterationConstant
+	# Initial guess is x = (0,0,...0)
+	x = np.zeros_like(b)
+	# Iterate constant number of times (TODO: iterate while big error Mx-b)
+	for i in range(iterationConstant):
+		xNew = np.zeros_like(x)
+		for j in range(L.shape[0]):
+			currentLowerRow = L.getrow(j)
+			currentUperRow = U.getrow(j)
+			sum = currentLowerRow.dot(xNew) + currentUperRow.dot(x)
+			xNew[j] = (b[j] - sum) / d[j]
+		x = xNew
 	return x
 
 # Value of the border function on values x,y
@@ -52,6 +69,12 @@ def getCoordinates(row):
 # Get the row of a(i, j)'s equation
 def getRow(i, j):
 	return(i * N + j)
+
+# Compute M and nablaValueVector (in Mx = nablaValueVector) and
+# computer L, U, D (lower, strictly upper and diagonal matrices of M)
+def computeMatrixAndVector():
+	for currentRow in range(N * N):
+		computeRow(currentRow)
 
 # Compute the elements of row-th row in (rowList, colList, dataList)
 def computeRow(row):
@@ -133,10 +156,8 @@ dataListUpper = []
 rowListLower = []
 colListLower = []
 dataListLower = []
+computeMatrixAndVector()
 
-# Process the entries of each row to create matrices M, D, R
-for currentRow in range(N * N):
-	computeRow(currentRow)
 
 # Instantiate sparse matrix M according to data kept in (rowList, colList, dataList)
 M = csr_matrix((np.array(dataList), (np.array(rowList), np.array(colList))), shape = (N * N, N * N))
@@ -149,17 +170,18 @@ R = csr_matrix((np.array(dataListRemainder), (np.array(rowListRemainder), np.arr
 L = csr_matrix((np.array(dataListLower), (np.array(rowListLower), np.array(colListLower))), shape = (N * N, N * N))
 U = csr_matrix((np.array(dataListUpper), (np.array(rowListUpper), np.array(colListUpper))), shape = (N * N, N * N))
 
-solution = JacobiIterate(D, R, nablaValueVector, N * N)
-
+solution = JacobiIterate(D, R, nablaValueVector)
+solution2 = GaussSeidelIterate(L, U, nablaValueVector)
 # Next lines are for debugging purpose
 
 print(solution)
+print(solution2)
 
-print(M.toarray())
-print(D.toarray())
-print(R.toarray())
-print(U.toarray())
-print(L.toarray())
+# print(M.toarray())
+# print(D.toarray())
+# print(R.toarray())
+# print(U.toarray())
+# print(L.toarray())
 #
 # print(nablaValueVector)
 # print(M.data())
