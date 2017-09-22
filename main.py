@@ -8,9 +8,9 @@ from scipy import *
 # We'll get the equation Mx = nablaValueVector and try to solve it by different methods
 # The scope is to get a fast solver for a class of differential equations
 
-globalIterationConstant = 50
+globalIterationConstant = 100
 
-def JacobiIterate(D,R,b):
+def JacobiIterate(D,R,M,b):
 	x = []
 	d = D.diagonal()
 	iterationConstant = globalIterationConstant
@@ -22,9 +22,11 @@ def JacobiIterate(D,R,b):
 		y = R.dot(x)
 		r = np.subtract(b,y)
 		x = [r_i / d_i for r_i, d_i in zip(r, d)]
-	return x
+	err = np.subtract(M.dot(x), b)
+	absErr = math.sqrt(err.dot(err))
+	return x, absErr
 
-def GaussSeidelIterate(L,U,b):
+def GaussSeidelIterate(L,U,M,b):
 	x = []
 	d = L.diagonal()
 	iterationConstant = globalIterationConstant
@@ -39,7 +41,9 @@ def GaussSeidelIterate(L,U,b):
 			sum = currentLowerRow.dot(xNew) + currentUperRow.dot(x)
 			xNew[j] = (b[j] - sum) / d[j]
 		x = xNew
-	return x
+	err = np.subtract(M.dot(x), b)
+	absErr = math.sqrt(err.dot(err))
+	return x, absErr
 
 # Value of the border function on values x,y
 def borderFunction(x,y):
@@ -170,12 +174,14 @@ R = csr_matrix((np.array(dataListRemainder), (np.array(rowListRemainder), np.arr
 L = csr_matrix((np.array(dataListLower), (np.array(rowListLower), np.array(colListLower))), shape = (N * N, N * N))
 U = csr_matrix((np.array(dataListUpper), (np.array(rowListUpper), np.array(colListUpper))), shape = (N * N, N * N))
 
-solution = JacobiIterate(D, R, nablaValueVector)
-solution2 = GaussSeidelIterate(L, U, nablaValueVector)
+(solution, error) = JacobiIterate(D, R, M, nablaValueVector)
+(solution2, error2) = GaussSeidelIterate(L, U, M, nablaValueVector)
 # Next lines are for debugging purpose
 
 print(solution)
+print(error)
 print(solution2)
+print(error2)
 
 # print(M.toarray())
 # print(D.toarray())
