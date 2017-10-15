@@ -1,141 +1,160 @@
 import numpy as np
 from scipy.sparse import *
 from scipy import *
+import matplotlib.pyplot as plt
 
 # TODO: function JacobiIteration(D,R,b) to solve Mx=b
 
 # We construct matrix M to approximate the solution of a differential equation
-# We'll get the equation Mx = nablaValueVector and try to solve it by different methods
+# We'll get the equation Mx = nablaValueVector and try to solve it
+# by different methods
 # The scope is to get a fast solver for a class of differential equations
 
 globalIterationConstant = 100
+COMPLETE_MATRIX = 'COMPLETE_MATRIX'
+LOWER_MATRIX = 'LOWER_MATRIX'
+STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
+DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
+REMAINDER_MATRIX = 'REMAINDER_MATRIX'
+plt.plot([1,2,3,4], [1,4,9,16], 'ro')
+plt.axis([0, 6, 0, 20])
+plt.show()
 
-def JacobiIterate(D,R,M,b):
-	x = []
-	d = D.diagonal()
-	iterationConstant = globalIterationConstant
-	# Initial guess is x = (0,0,...0)
-	for i in range(D.shape[0]):
-		x.append(0)
-	# Iterate constant number of times (TODO: iterate while big error Mx-b)
-	for i in range(iterationConstant):
-		y = R.dot(x)
-		r = np.subtract(b,y)
-		x = [r_i / d_i for r_i, d_i in zip(r, d)]
-	err = np.subtract(M.dot(x), b)
-	absErr = math.sqrt(err.dot(err))
-	return x, absErr
 
-def GaussSeidelIterate(L,U,M,b):
-	x = []
-	d = L.diagonal()
-	iterationConstant = globalIterationConstant
-	# Initial guess is x = (0,0,...0)
-	x = np.zeros_like(b)
-	# Iterate constant number of times (TODO: iterate while big error Mx-b)
-	for i in range(iterationConstant):
-		xNew = np.zeros_like(x)
-		for j in range(L.shape[0]):
-			currentLowerRow = L.getrow(j)
-			currentUperRow = U.getrow(j)
-			sum = currentLowerRow.dot(xNew) + currentUperRow.dot(x)
-			xNew[j] = (b[j] - sum) / d[j]
-		x = xNew
-	err = np.subtract(M.dot(x), b)
-	absErr = math.sqrt(err.dot(err))
-	return x, absErr
+def addEntry(type, row, column, value):
+    if(type == COMPLETE_MATRIX):
+        rowList.append(row)
+        colList.append(column)
+        dataList.append(value)
+    elif(type == LOWER_MATRIX):
+        rowListLower.append(row)
+        colListLower.append(column)
+        dataListLower.append(value)
+    elif(type == STRICTLY_UPPER_MATRIX):
+        rowListUpper.append(row)
+        colListUpper.append(column)
+        dataListUpper.append(value)
+    elif(type == DIAGONAL_MATRIX):
+        rowListDiagonal.append(row)
+        colListDiagonal.append(column)
+        dataListDiagonal.append(value)
+    elif(type == REMAINDER_MATRIX):
+        rowListRemainder.append(row)
+        colListRemainder.append(column)
+        dataListRemainder.append(value)
+
+
+def addEntryToMatrices(row, column, value):
+    addEntry(COMPLETE_MATRIX, row, column, value)
+    if(row == column):
+        addEntry(DIAGONAL_MATRIX, row, column, value)
+        addEntry(LOWER_MATRIX, row, column, value)
+    if(row < column):
+        addEntry(LOWER_MATRIX, row, column, value)
+        addEntry(REMAINDER_MATRIX, row, column, value)
+    if(row > column):
+        addEntry(STRICTLY_UPPER_MATRIX, row, column, value)
+        addEntry(REMAINDER_MATRIX, row, column, value)
+
+
+def JacobiIterate(D, R, M, b):
+    x = []
+    d = D.diagonal()
+    iterationConstant = globalIterationConstant
+    # Initial guess is x = (0,0,...0)
+    for i in range(D.shape[0]):
+        x.append(0)
+    # Iterate constant number of times (TODO: iterate while big error Mx-b)
+    for i in range(iterationConstant):
+        y = R.dot(x)
+        r = np.subtract(b, y)
+        x = [r_i / d_i for r_i, d_i in zip(r, d)]
+    err = np.subtract(M.dot(x), b)
+    absErr = math.sqrt(err.dot(err))
+    return x, absErr
+
+
+def GaussSeidelIterate(L, U, M, b):
+    x = []
+    d = L.diagonal()
+    iterationConstant = globalIterationConstant
+    # Initial guess is x = (0,0,...0)
+    x = np.zeros_like(b)
+    # Iterate constant number of times (TODO: iterate while big error Mx-b)
+    for i in range(iterationConstant):
+        xNew = np.zeros_like(x)
+        for j in range(L.shape[0]):
+            currentLowerRow = L.getrow(j)
+            currentUperRow = U.getrow(j)
+            sum = currentLowerRow.dot(xNew) + currentUperRow.dot(x)
+            xNew[j] = (b[j] - sum) / d[j]
+        x = xNew
+    err = np.subtract(M.dot(x), b)
+    absErr = math.sqrt(err.dot(err))
+    return x, absErr
+
 
 # Value of the border function on values x,y
-def borderFunction(x,y):
-	# Assert (x,y) is on border
-	value = 1
-	return value
+def borderFunction(x, y):
+    # Assert (x,y) is on border
+    value = 1
+    return value
+
 
 # Nabla value of the differential equation at points x, y
-def nablaFunction(x,y):
-	value = 0
-	return value * h * h
+def nablaFunction(x, y):
+    value = 0
+    return value * h * h
+
 
 # NablaValueVector from Mx = nablaValueVector
 nablaValueVector = []
 
+
 # Check if a(i,j) is on border
 def isOnBorder(i, j):
-	if(i == 0 or j == 0 or i == N - 1 or j == N - 1):
-		return True
-	else:
-		return False
+    if(i == 0 or j == 0 or i == N - 1 or j == N - 1):
+        return True
+    else:
+        return False
+
 
 # Get the coordinates of the variable around which the row-th row is created
 def getCoordinates(row):
-	return int(row / N), row % N
+    return int(row / N), row % N
+
 
 # Get the row of a(i, j)'s equation
 def getRow(i, j):
-	return(i * N + j)
+    return(i * N + j)
+
 
 # Compute M and nablaValueVector (in Mx = nablaValueVector) and
 # computer L, U, D (lower, strictly upper and diagonal matrices of M)
 def computeMatrixAndVector():
-	for currentRow in range(N * N):
-		computeRow(currentRow)
+    for currentRow in range(N * N):
+        computeRow(currentRow)
+
 
 # Compute the elements of row-th row in (rowList, colList, dataList)
 def computeRow(row):
-	(x, y) = getCoordinates(row)
-	if(isOnBorder(x, y)):
-		rowList.append(row)
-		colList.append(row)
-		dataList.append(1)
-		# The value of the border on point x/N, y/N is known, so append the equation variable = value to the system
-		nablaValueVector.append(borderFunction(x / N, y / N))
+    (x, y) = getCoordinates(row)
+    if(isOnBorder(x, y)):
+        addEntryToMatrices(row, row, 1)
+        # The value of the border on point x/N, y/N is known,
+        # so append the equation variable = value to the system
+        nablaValueVector.append(borderFunction(x / N, y / N))
+    else:
+        value = - nablaFunction(x / N, y / N)
+        addEntryToMatrices(row, row, 4)
 
-		# Add entry to Diagonal component of the matrix
-		rowListDiagonal.append(row)
-		colListDiagonal.append(row)
-		dataListDiagonal.append(1)
-
-		rowListLower.append(row)
-		colListLower.append(row)
-		dataListLower.append(1)
-	else:
-		value = - nablaFunction(x / N, y / N)
-		rowList.append(row)
-		colList.append(row)
-		dataList.append(4)
-
-		# Add entry to Diagonal component of the matrix
-		rowListDiagonal.append(row)
-		colListDiagonal.append(row)
-		dataListDiagonal.append(4)
-
-		rowListLower.append(row)
-		colListLower.append(row)
-		dataListLower.append(4)
-
-		for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-			if(not(isOnBorder(x + dX, y + dY))):
-				rowList.append(row)
-				colList.append(getRow(x + dX, y + dY))
-				dataList.append(-1)
-
-				rowListRemainder.append(row)
-				colListRemainder.append(getRow(x + dX, y + dY))
-				dataListRemainder.append(-1)
-
-				if(row < getRow(x + dX, y + dY)):
-					rowListUpper.append(row)
-					colListUpper.append(getRow(x + dX, y + dY))
-					dataListUpper.append(-1)
-				else:
-					rowListLower.append(row)
-					colListLower.append(getRow(x + dX, y + dY))
-					dataListLower.append(-1)
-
-			else:
-				localValue = borderFunction((x + dX) / N, (y + dY)/N)
-				value += localValue
-		nablaValueVector.append(value)
+        for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+            if(not(isOnBorder(x + dX, y + dY))):
+                addEntryToMatrices(row, getRow(x + dX, y + dY), -1)
+            else:
+                localValue = borderFunction((x + dX) / N, (y + dY) / N)
+                value += localValue
+        nablaValueVector.append(value)
 
 
 N = int(input("Enter inverse of sample rate\n"))
