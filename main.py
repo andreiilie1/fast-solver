@@ -10,17 +10,24 @@ import matplotlib.pyplot as plt
 # by different methods
 # The scope is to get a fast solver for a class of differential equations
 
-globalIterationConstant = 100
+globalIterationConstant = 1000
 COMPLETE_MATRIX = 'COMPLETE_MATRIX'
 LOWER_MATRIX = 'LOWER_MATRIX'
 STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
 DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
 REMAINDER_MATRIX = 'REMAINDER_MATRIX'
-plt.plot([1,2,3,4], [1,4,9,16], 'ro')
-plt.axis([0, 6, 0, 20])
-plt.show()
+
+# Helper vector operations functions
+def vectorSum(a, b):
+	return map(sum, zip(a, b))
 
 
+def multiplyVectorByScalar(vect, scalar):
+	return map (lambda x: x * scalar, vect)
+#____________________________________________#
+
+
+# Helper functions for creating the complete, lower, upper and diagonal matrices
 def addEntry(type, row, column, value):
     if(type == COMPLETE_MATRIX):
         rowList.append(row)
@@ -49,28 +56,33 @@ def addEntryToMatrices(row, column, value):
     if(row == column):
         addEntry(DIAGONAL_MATRIX, row, column, value)
         addEntry(LOWER_MATRIX, row, column, value)
-    if(row < column):
+    if(row > column):
         addEntry(LOWER_MATRIX, row, column, value)
         addEntry(REMAINDER_MATRIX, row, column, value)
-    if(row > column):
+    if(row < column):
         addEntry(STRICTLY_UPPER_MATRIX, row, column, value)
         addEntry(REMAINDER_MATRIX, row, column, value)
+#____________________________________________#
 
 
+# Iterative methods for solving a linear system
 def JacobiIterate(D, R, M, b):
     x = []
     d = D.diagonal()
     iterationConstant = globalIterationConstant
     # Initial guess is x = (0,0,...0)
-    for i in range(D.shape[0]):
-        x.append(0)
+    x = np.zeros_like(b)
     # Iterate constant number of times (TODO: iterate while big error Mx-b)
     for i in range(iterationConstant):
+        err = np.subtract(M.dot(x), b)
+        absErr = math.sqrt(err.dot(err))
+        errorDataJacobi.append(absErr)
         y = R.dot(x)
         r = np.subtract(b, y)
         x = [r_i / d_i for r_i, d_i in zip(r, d)]
     err = np.subtract(M.dot(x), b)
     absErr = math.sqrt(err.dot(err))
+    errorDataJacobi.append(absErr)
     return x, absErr
 
 
@@ -82,16 +94,42 @@ def GaussSeidelIterate(L, U, M, b):
     x = np.zeros_like(b)
     # Iterate constant number of times (TODO: iterate while big error Mx-b)
     for i in range(iterationConstant):
+        err = np.subtract(M.dot(x), b)
+        absErr = math.sqrt(err.dot(err))
+        errorDataGaussSeidel.append(absErr)
         xNew = np.zeros_like(x)
         for j in range(L.shape[0]):
             currentLowerRow = L.getrow(j)
             currentUperRow = U.getrow(j)
-            sum = currentLowerRow.dot(xNew) + currentUperRow.dot(x)
-            xNew[j] = (b[j] - sum) / d[j]
+            rowSum = currentLowerRow.dot(xNew) + currentUperRow.dot(x)
+            xNew[j] = (b[j] - rowSum) / d[j]
         x = xNew
     err = np.subtract(M.dot(x), b)
     absErr = math.sqrt(err.dot(err))
+    errorDataGaussSeidel.append(absErr)
     return x, absErr
+
+def SteepestDescent(M, b):
+    avoidDivByZeroError = 0.0000000000000000001
+    x = np.zeros_like(b)
+    r = np.subtract(b, M.dot(x))
+    iterationConstant = globalIterationConstant
+    for i in range(iterationConstant):
+    	err = np.subtract(M.dot(x), b)
+        absErr = math.sqrt(err.dot(err))
+        errorDataSteepestDescent.append(absErr)
+    	alpha_numerator = r.dot(r)	
+    	alpha_denominator = r.dot(M.dot(r))
+    	if(alpha_denominator < avoidDivByZeroError):
+    		break
+    	alpha = alpha_numerator / alpha_denominator
+    	x = vectorSum(x, multiplyVectorByScalar(r, alpha))
+    	r = np.subtract(b, M.dot(x))
+    err = np.subtract(M.dot(x), b)
+    absErr = math.sqrt(err.dot(err))
+    errorDataSteepestDescent.append(absErr)
+    return x, absErr
+#____________________________________________#
 
 
 # Value of the border function on values x,y
@@ -104,7 +142,7 @@ def borderFunction(x, y):
 # Nabla value of the differential equation at points x, y
 def nablaFunction(x, y):
     value = 0
-    return value * h * h
+    return value
 
 
 # NablaValueVector from Mx = nablaValueVector
@@ -145,7 +183,7 @@ def computeRow(row):
         # so append the equation variable = value to the system
         nablaValueVector.append(borderFunction(x / N, y / N))
     else:
-        value = - nablaFunction(x / N, y / N)
+        value = - nablaFunction(x / N, y / N) * h * h
         addEntryToMatrices(row, row, 4)
 
         for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
@@ -193,20 +231,46 @@ R = csr_matrix((np.array(dataListRemainder), (np.array(rowListRemainder), np.arr
 L = csr_matrix((np.array(dataListLower), (np.array(rowListLower), np.array(colListLower))), shape = (N * N, N * N))
 U = csr_matrix((np.array(dataListUpper), (np.array(rowListUpper), np.array(colListUpper))), shape = (N * N, N * N))
 
+# Error data after each iteration
+errorDataJacobi = []
+errorDataGaussSeidel = []
+errorDataSteepestDescent = []
+
 (solution, error) = JacobiIterate(D, R, M, nablaValueVector)
 (solution2, error2) = GaussSeidelIterate(L, U, M, nablaValueVector)
+(solution3, error3) = SteepestDescent(M, nablaValueVector)
+
+
+plt.plot(errorDataJacobi)
+plt.plot(errorDataGaussSeidel)
+plt.plot(errorDataSteepestDescent)
+plt.show()
 # Next lines are for debugging purpose
 
-print(solution)
+print('Solution of Jacobi Iteration:')
+#print(solution)
+print('Error of Jacobi Iteration:')
 print(error)
-print(solution2)
+print('_________')
+
+print('Solution of Gauss Seidel Iteration:')
+#print(solution2)
+print('Error of Gauss Seidel Iteration:')
 print(error2)
+print('_________')
+
+print('Solution of (unoptimized) Steepest Descent Iteration:')
+#print(solution3)
+print('Error of (unoptimized) Steepest Descent Iteration:')
+print(error3)
+print('_________')
+
 
 # print(M.toarray())
 # print(D.toarray())
 # print(R.toarray())
 # print(U.toarray())
-# print(L.toarray())
+# print(D.toarray())
 #
 # print(nablaValueVector)
 # print(M.data())
