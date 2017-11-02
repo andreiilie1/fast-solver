@@ -5,12 +5,21 @@ import matplotlib.pyplot as plt
 
 # TODO: function JacobiIteration(D,R,b) to solve Mx=b
 
+# https://people.eecs.berkeley.edu/~demmel/cs267/lectureSparseLU/lectureSparseLU1.html for 
+# Cholesky on sparse matrices
+
+# https://en.wikipedia.org/wiki/Successive_over-relaxation
+# SOR generalization of GS / J
+
+# http://cpsc.yale.edu/sites/default/files/files/tr48.pdf
+# Gauss efficient sparse implementation
+
 # We construct matrix M to approximate the solution of a differential equation
 # We'll get the equation Mx = nablaValueVector and try to solve it
 # by different methods
 # The scope is to get a fast solver for a class of differential equations
 
-globalIterationConstant = 1000
+globalIterationConstant = 100
 COMPLETE_MATRIX = 'COMPLETE_MATRIX'
 LOWER_MATRIX = 'LOWER_MATRIX'
 STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
@@ -86,6 +95,7 @@ def JacobiIterate(D, R, M, b):
     return x, absErr
 
 
+
 def GaussSeidelIterate(L, U, M, b):
     x = []
     d = L.diagonal()
@@ -109,6 +119,8 @@ def GaussSeidelIterate(L, U, M, b):
     errorDataGaussSeidel.append(absErr)
     return x, absErr
 
+
+
 def SteepestDescent(M, b):
     avoidDivByZeroError = 0.0000000000000000001
     x = np.zeros_like(b)
@@ -129,6 +141,42 @@ def SteepestDescent(M, b):
     absErr = math.sqrt(err.dot(err))
     errorDataSteepestDescent.append(absErr)
     return x, absErr
+
+
+
+def ConjugateGradientsHS(M, b):
+    avoidDivByZeroError = 0.0000000000000000001
+    x = np.zeros_like(b)
+    r = np.subtract(b, M.dot(x))
+    d = np.subtract(b, M.dot(x))
+    iterationConstant = globalIterationConstant
+    for i in range(iterationConstant):
+    	err = np.subtract(M.dot(x), b)
+        absErr = math.sqrt(err.dot(err))
+        errorDataConjugateGradients.append(absErr)
+
+        alpha_numerator = r.dot(r)
+        alpha_denominator = d.dot(M.dot(d))
+        if(alpha_denominator < avoidDivByZeroError):
+    		break
+    	alpha = alpha_numerator / alpha_denominator
+
+    	x = vectorSum(x, multiplyVectorByScalar(d, alpha))
+    	r_new = np.array(vectorSum(r, multiplyVectorByScalar(M.dot(d), -alpha)))
+
+    	beta_numerator = r_new.dot(r_new)
+    	beta_denominator = r.dot(r)
+    	if(beta_denominator < avoidDivByZeroError):
+    		break
+    	beta = beta_numerator / beta_denominator
+
+    	d = r_new + multiplyVectorByScalar(d, beta)
+    	r = r_new
+    err = np.subtract(M.dot(x), b)
+    absErr = math.sqrt(err.dot(err))
+    errorDataConjugateGradients.append(absErr)
+    return x, absErr
+
 #____________________________________________#
 
 
@@ -235,15 +283,18 @@ U = csr_matrix((np.array(dataListUpper), (np.array(rowListUpper), np.array(colLi
 errorDataJacobi = []
 errorDataGaussSeidel = []
 errorDataSteepestDescent = []
+errorDataConjugateGradients = []
 
 (solution, error) = JacobiIterate(D, R, M, nablaValueVector)
 (solution2, error2) = GaussSeidelIterate(L, U, M, nablaValueVector)
 (solution3, error3) = SteepestDescent(M, nablaValueVector)
+(solution4, error4) = ConjugateGradientsHS(M, nablaValueVector)
 
-
-plt.plot(errorDataJacobi)
-plt.plot(errorDataGaussSeidel)
-plt.plot(errorDataSteepestDescent)
+plt.plot(errorDataJacobi, label = 'Jacobi')
+plt.plot(errorDataGaussSeidel, label = 'Gauss-Seidel')
+plt.plot(errorDataSteepestDescent, label = 'Steepest Descent')
+plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients')
+plt.legend(loc='upper right')
 plt.show()
 # Next lines are for debugging purpose
 
@@ -263,6 +314,12 @@ print('Solution of (unoptimized) Steepest Descent Iteration:')
 #print(solution3)
 print('Error of (unoptimized) Steepest Descent Iteration:')
 print(error3)
+print('_________')
+
+print('Solution of CG Iteration:')
+# print(solution4)
+print('Error of CG Iteration:')
+print(error4)
 print('_________')
 
 
