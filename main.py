@@ -221,8 +221,14 @@ def computeMatrixAndVector():
     for currentRow in range(N * N):
         computeRow(currentRow)
 
+# Compute M and nablaValueVector (in Mx = nablaValueVector) and
+# computer L, U, D (lower, strictly upper and diagonal matrices of M)
+def computeMatrixAndVectorHeatEquation():
+    for currentRow in range(N * N):
+        computeRowHeatEquation(currentRow)
 
-# Compute the elements of row-th row in (rowList, colList, dataList)
+
+# Compute the elements of row-th row in (rowList, colList, dataList) for -nabla f(x,t) = g(x,t) problem
 def computeRow(row):
     (x, y) = getCoordinates(row)
     if(isOnBorder(x, y)):
@@ -241,6 +247,42 @@ def computeRow(row):
                 localValue = borderFunction((x + dX) / N, (y + dY) / N)
                 value += localValue
         nablaValueVector.append(value)
+
+
+# Compute the elements of row-th row in (rowList, colList, dataList) for the heat equation
+def computeRowHeatEquation(row):
+    (x, y) = getCoordinates(row)
+    if(isOnBorder(x, y)):
+        addEntryToMatrices(row, row, 1)
+        # The value of the border on point x/N, y/N is known,
+        # so append the equation variable = value to the system
+        nablaValueVector.append(borderFunction(x / N, y / N))
+    else:
+        value = - nablaFunction(x / N, y / N) * h * h
+        addEntryToMatrices(row, row, 4 + h)
+
+        for (dX, dY) in [(1, 0), (-1, 0), (0, 1)]:
+            if(not(isOnBorder(x + dX, y + dY))):
+                addEntryToMatrices(row, getRow(x + dX, y + dY), -1)
+            else:
+                localValue = borderFunction((x + dX) / N, (y + dY) / N)
+                value += localValue
+
+        dX = 0
+        dY = -1
+        if(not(isOnBorder(x + dX, y + dY))):
+            addEntryToMatrices(row, getRow(x + dX, y + dY), -(1 + h))
+        else:
+            localValue = borderFunction((x + dX) / N, (y + dY) / N)
+            value += localValue * (1 + h)
+        nablaValueVector.append(value)
+
+
+#____________________________________________#
+
+def displayFunction3D(solution):
+	return false
+	#TODO: Implement 3d visualization of data
 
 
 N = int(input("Enter inverse of sample rate\n"))
@@ -265,7 +307,10 @@ dataListUpper = []
 rowListLower = []
 colListLower = []
 dataListLower = []
-computeMatrixAndVector()
+
+# In the current format, just call one of the two computeMatrix functions below
+# computeMatrixAndVector()
+computeMatrixAndVectorHeatEquation()
 
 
 # Instantiate sparse matrix M according to data kept in (rowList, colList, dataList)
@@ -317,7 +362,7 @@ print(error3)
 print('_________')
 
 print('Solution of CG Iteration:')
-# print(solution4)
+print(solution4)
 print('Error of CG Iteration:')
 print(error4)
 print('_________')
