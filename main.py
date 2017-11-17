@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse import *
 from scipy import *
 import matplotlib.pyplot as plt
+import sys
 
 # TODO: function JacobiIteration(D,R,b) to solve Mx=b
 
@@ -19,7 +20,7 @@ import matplotlib.pyplot as plt
 # by different methods
 # The scope is to get a fast solver for a class of differential equations
 
-globalIterationConstant = 100
+globalIterationConstant = 10000
 COMPLETE_MATRIX = 'COMPLETE_MATRIX'
 LOWER_MATRIX = 'LOWER_MATRIX'
 STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
@@ -145,7 +146,8 @@ def SteepestDescent(M, b):
 
 
 def ConjugateGradientsHS(M, b):
-    avoidDivByZeroError = 0.0000000000000000001
+    avoidDivByZeroError = 0.000001
+    errorDataConjugateGradients = []
     x = np.zeros_like(b)
     r = np.subtract(b, M.dot(x))
     d = np.subtract(b, M.dot(x))
@@ -161,8 +163,8 @@ def ConjugateGradientsHS(M, b):
     		break
     	alpha = alpha_numerator / alpha_denominator
 
-    	x = vectorSum(x, multiplyVectorByScalar(d, alpha))
-    	r_new = np.array(vectorSum(r, multiplyVectorByScalar(M.dot(d), -alpha)))
+    	x = np.add(x, np.multiply(d, alpha))
+    	r_new = np.subtract(r, np.multiply(M.dot(d), alpha))
 
     	beta_numerator = r_new.dot(r_new)
     	beta_denominator = r.dot(r)
@@ -170,12 +172,12 @@ def ConjugateGradientsHS(M, b):
     		break
     	beta = beta_numerator / beta_denominator
 
-    	d = r_new + multiplyVectorByScalar(d, beta)
+    	d = r_new + np.multiply(d, beta)
     	r = r_new
     err = np.subtract(M.dot(x), b)
     absErr = math.sqrt(err.dot(err))
     errorDataConjugateGradients.append(absErr)
-    return x, absErr
+    return x, absErr, errorDataConjugateGradients
 
 #____________________________________________#
 
@@ -221,12 +223,6 @@ def computeMatrixAndVector():
     for currentRow in range(N * N):
         computeRow(currentRow)
 
-# Compute M and nablaValueVector (in Mx = nablaValueVector) and
-# computer L, U, D (lower, strictly upper and diagonal matrices of M)
-def computeMatrixAndVectorHeatEquation():
-    for currentRow in range(N * N):
-        computeRowHeatEquation(currentRow)
-
 
 # Compute the elements of row-th row in (rowList, colList, dataList) for -nabla f(x,t) = g(x,t) problem
 def computeRow(row):
@@ -249,33 +245,74 @@ def computeRow(row):
         nablaValueVector.append(value)
 
 
-# Compute the elements of row-th row in (rowList, colList, dataList) for the heat equation
-def computeRowHeatEquation(row):
+# Current value vector i.e. current value (at current time k * dT) of f(x,y,t) in du/dt - laplace(u) = f
+valueVector = []
+
+def solveHeatTimeEquation():
+	return 'to implement'
+    # To implement by encapsulating the data structures and methods in the main body
+
+# Returns a vector with the initial solution at t = 0 for all x,y
+def initialHeatTimeSolution():
+	initSol = []
+	for currentIndex in range(N * N):
+		initSol.append(0)
+	return initSol
+
+# Value of f(x,y,t) in du/dt - laplace(u) = f
+def rhsFunctionHeatTimeEquation(x, y, t):
+	value = 0
+	return value
+
+
+# Value of the border function on values x,y and at time t
+# used for the equation which also introduces time
+def borderTimeFunction(x, y, t):
+    # Assert (x,y) is on border
+    value = 1
+    return value
+
+
+# Compute M and nablaValueVector (in Mx = nablaValueVector) and
+# computer L, U, D (lower, strictly upper and diagonal matrices of M)
+def computeMatrixHeatTimeEquation():
+    for currentRow in range(N * N):
+        computeRowHeatTimeEquation(currentRow)
+
+
+# Computes the RHS vector at time k*dT w.r.t. the prevSol (sol vector at time = (k-1)*dT)
+def computeVectorAtTimestep(k, prevSol):
+	valueVector = []
+	for currentIndex in range(N * N):
+		(x, y) = getCoordinates(currentIndex)
+
+		if(isOnBorder(x, y)):
+			value = borderTimeFunction(x / N, y / N, k * dT)
+		else:
+			value = (h * h) * rhsFunctionHeatTimeEquation(x / N, y / N, k * dT)
+			value = value + (h * h) / dT * prevSol[getRow(x, y)]
+
+			for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+			 	if((isOnBorder(x + dX, y + dY))):
+					localValue = borderTimeFunction((x + dX) / N, (y + dY) / N, k * dT)
+					value += localValue
+
+		valueVector.append(value)
+
+	return valueVector
+
+
+# Compute the elements of row-th row in (rowList, colList, dataList) for the heat equation with time
+def computeRowHeatTimeEquation(row):
     (x, y) = getCoordinates(row)
     if(isOnBorder(x, y)):
         addEntryToMatrices(row, row, 1)
-        # The value of the border on point x/N, y/N is known,
-        # so append the equation variable = value to the system
-        nablaValueVector.append(borderFunction(x / N, y / N))
     else:
-        value = - nablaFunction(x / N, y / N) * h * h
-        addEntryToMatrices(row, row, 4 + h)
+        addEntryToMatrices(row, row, 4 + (h * h) / dT)
 
-        for (dX, dY) in [(1, 0), (-1, 0), (0, 1)]:
+        for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             if(not(isOnBorder(x + dX, y + dY))):
                 addEntryToMatrices(row, getRow(x + dX, y + dY), -1)
-            else:
-                localValue = borderFunction((x + dX) / N, (y + dY) / N)
-                value += localValue
-
-        dX = 0
-        dY = -1
-        if(not(isOnBorder(x + dX, y + dY))):
-            addEntryToMatrices(row, getRow(x + dX, y + dY), -(1 + h))
-        else:
-            localValue = borderFunction((x + dX) / N, (y + dY) / N)
-            value += localValue * (1 + h)
-        nablaValueVector.append(value)
 
 
 #____________________________________________#
@@ -285,8 +322,10 @@ def displayFunction3D(solution):
 	#TODO: Implement 3d visualization of data
 
 
-N = int(input("Enter inverse of sample rate\n"))
+N = int(input("Enter inverse of coordinates sample rate\n"))
+T = int(input("Enter inverse of time sample rate\n"))
 h = 1.0 / N
+dT = 1.0 / T
 
 rowList = []
 colList = []
@@ -310,11 +349,18 @@ dataListLower = []
 
 # In the current format, just call one of the two computeMatrix functions below
 # computeMatrixAndVector()
-computeMatrixAndVectorHeatEquation()
-
+computeMatrixHeatTimeEquation()
 
 # Instantiate sparse matrix M according to data kept in (rowList, colList, dataList)
 M = csr_matrix((np.array(dataList), (np.array(rowList), np.array(colList))), shape = (N * N, N * N))
+Mt = M.transpose()
+Msym = np.subtract(M, Mt)
+maxMSym = Msym.max()
+minMSym = Msym.min()
+
+if(maxMSym != 0 or minMSym != 0):
+	print('Matrix not symmetric!!')
+	sys.exit(1)
 
 # Diagonal and remainging matrices D, R with D + R = M
 D = csr_matrix((np.array(dataListDiagonal), (np.array(rowListDiagonal), np.array(colListDiagonal))), shape = (N * N, N * N))
@@ -329,43 +375,51 @@ errorDataJacobi = []
 errorDataGaussSeidel = []
 errorDataSteepestDescent = []
 errorDataConjugateGradients = []
+errorDataHeatConjugateGradients = []
 
-(solution, error) = JacobiIterate(D, R, M, nablaValueVector)
-(solution2, error2) = GaussSeidelIterate(L, U, M, nablaValueVector)
-(solution3, error3) = SteepestDescent(M, nablaValueVector)
-(solution4, error4) = ConjugateGradientsHS(M, nablaValueVector)
+solHeat = initialHeatTimeSolution()
+for k in range(1, T + 1):
+	t = k * dT
+	valueVector = computeVectorAtTimestep(k, solHeat)
+	(solHeat, errHeat, errorDataHeatConjugateGradients) = ConjugateGradientsHS(M, valueVector)
+	print(errHeat)
 
-plt.plot(errorDataJacobi, label = 'Jacobi')
-plt.plot(errorDataGaussSeidel, label = 'Gauss-Seidel')
-plt.plot(errorDataSteepestDescent, label = 'Steepest Descent')
-plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients')
-plt.legend(loc='upper right')
-plt.show()
+# (solution, error) = JacobiIterate(D, R, M, nablaValueVector)
+# (solution2, error2) = GaussSeidelIterate(L, U, M, nablaValueVector)
+# (solution3, error3) = SteepestDescent(M, nablaValueVector)
+# (solution4, error4, errorDataConjugateGradients) = ConjugateGradientsHS(M, nablaValueVector)
+
+# plt.plot(errorDataJacobi, label = 'Jacobi')
+# plt.plot(errorDataGaussSeidel, label = 'Gauss-Seidel')
+# plt.plot(errorDataSteepestDescent, label = 'Steepest Descent')
+# plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients')
+# plt.legend(loc='upper right')
+# plt.show()
 # Next lines are for debugging purpose
 
-print('Solution of Jacobi Iteration:')
-#print(solution)
-print('Error of Jacobi Iteration:')
-print(error)
-print('_________')
+# print('Solution of Jacobi Iteration:')
+# #print(solution)
+# print('Error of Jacobi Iteration:')
+# print(error)
+# print('_________')
 
-print('Solution of Gauss Seidel Iteration:')
-#print(solution2)
-print('Error of Gauss Seidel Iteration:')
-print(error2)
-print('_________')
+# print('Solution of Gauss Seidel Iteration:')
+# #print(solution2)
+# print('Error of Gauss Seidel Iteration:')
+# print(error2)
+# print('_________')
 
-print('Solution of (unoptimized) Steepest Descent Iteration:')
-#print(solution3)
-print('Error of (unoptimized) Steepest Descent Iteration:')
-print(error3)
-print('_________')
+# print('Solution of Steepest Descent Iteration:')
+# #print(solution3)
+# print('Error of Steepest Descent Iteration:')
+# print(error3)
+# print('_________')
 
-print('Solution of CG Iteration:')
-print(solution4)
-print('Error of CG Iteration:')
-print(error4)
-print('_________')
+# print('Solution of CG Iteration:')
+# print(solution4)
+# print('Error of CG Iteration:')
+# print(error4)
+# print('_________')
 
 
 # print(M.toarray())
