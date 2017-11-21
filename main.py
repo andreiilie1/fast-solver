@@ -3,6 +3,14 @@ from scipy.sparse import *
 from scipy import *
 import matplotlib.pyplot as plt
 import sys
+import math
+
+
+# What I have tried for CG: 
+# 1) corrected some float divisions which were getting converted to int's in auxilliary steps
+# 2) checked that the matrix is correct for small sizes, checked for N's up to 20 that it is positive definite and symmetric
+# 3) checked that the solution for g = - 2 sin x sin y converges (fast) to the correct solution f = sin x sin y
+# 4) tried 3 different implementations (one taken exactly from Golub - practical CG notes) of CG, they all get the same ||Ax - b|| (iteration) graphs
 
 # TODO: function JacobiIteration(D,R,b) to solve Mx=b
 
@@ -16,16 +24,19 @@ import sys
 # Gauss efficient sparse implementation
 
 # We construct matrix M to approximate the solution of a differential equation
-# We'll get the equation Mx = nablaValueVector and try to solve it
+# We'll get the equation Mx = valueVector2D and try to solve it
 # by different methods
 # The scope is to get a fast solver for a class of differential equations
 
-globalIterationConstant = 10000
+globalIterationConstant = 100
 COMPLETE_MATRIX = 'COMPLETE_MATRIX'
 LOWER_MATRIX = 'LOWER_MATRIX'
 STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
 DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
 REMAINDER_MATRIX = 'REMAINDER_MATRIX'
+
+def is_pos_def(x):
+    return np.all(np.linalg.eigvals(x) > 0)
 
 # Helper vector operations functions
 def vectorSum(a, b):
@@ -126,6 +137,7 @@ def SteepestDescent(M, b):
     avoidDivByZeroError = 0.0000000000000000001
     x = np.zeros_like(b)
     r = np.subtract(b, M.dot(x))
+    print(r)
     iterationConstant = globalIterationConstant
     for i in range(iterationConstant):
     	err = np.subtract(M.dot(x), b)
@@ -146,22 +158,21 @@ def SteepestDescent(M, b):
 
 
 def ConjugateGradientsHS(M, b):
-    avoidDivByZeroError = 0.000001
+    avoidDivByZeroError = 0.0000000001
     errorDataConjugateGradients = []
-    x = np.zeros_like(b)
+    x = np.zeros_like(b, dtype=np.float)
     r = np.subtract(b, M.dot(x))
     d = np.subtract(b, M.dot(x))
-    iterationConstant = globalIterationConstant
-    for i in range(iterationConstant):
+    for i in range((N+1)*(N+1)):
     	err = np.subtract(M.dot(x), b)
-        absErr = math.sqrt(err.dot(err))
+        absErr = np.linalg.norm(err)
         errorDataConjugateGradients.append(absErr)
 
         alpha_numerator = r.dot(r)
         alpha_denominator = d.dot(M.dot(d))
         if(alpha_denominator < avoidDivByZeroError):
     		break
-    	alpha = alpha_numerator / alpha_denominator
+    	alpha = 1.0 * alpha_numerator / alpha_denominator
 
     	x = np.add(x, np.multiply(d, alpha))
     	r_new = np.subtract(r, np.multiply(M.dot(d), alpha))
@@ -170,38 +181,142 @@ def ConjugateGradientsHS(M, b):
     	beta_denominator = r.dot(r)
     	if(beta_denominator < avoidDivByZeroError):
     		break
-    	beta = beta_numerator / beta_denominator
+    	beta = 1.0 * beta_numerator / beta_denominator
 
     	d = r_new + np.multiply(d, beta)
     	r = r_new
+
     err = np.subtract(M.dot(x), b)
     absErr = math.sqrt(err.dot(err))
     errorDataConjugateGradients.append(absErr)
     return x, absErr, errorDataConjugateGradients
 
+
+
+def ConjugateGradientsHS_test(M, b):
+    avoidDivByZeroError = 0.000001
+    errorDataConjugateGradients = []
+    x = []
+    x.append(2)
+    x.append(1)
+    r = np.subtract(b, M.dot(x))
+    d = np.subtract(b, M.dot(x))
+    iterationConstant = globalIterationConstant
+    for i in range(2):
+    	err = np.subtract(M.dot(x), b)
+        absErr = np.linalg.norm(err)
+        errorDataConjugateGradients.append(absErr)
+
+        alpha_numerator = r.dot(r)
+        alpha_denominator = d.dot(M.dot(d))
+        if(alpha_denominator < avoidDivByZeroError):
+    		break
+    	alpha = 1.0 * alpha_numerator / alpha_denominator
+    	x = np.add(x, np.multiply(d, alpha))
+    	r_new = np.subtract(r, np.multiply(M.dot(d), alpha))
+
+    	beta_numerator = r_new.dot(r_new)
+    	beta_denominator = r.dot(r)
+    	if(beta_denominator < avoidDivByZeroError):
+    		break
+    	beta = 1.0 * beta_numerator / beta_denominator
+    	d = r_new + np.multiply(d, beta)
+    	r = r_new
+    err = np.subtract(M.dot(x), b)
+    absErr = math.sqrt(err.dot(err))
+    errorDataConjugateGradients.append(absErr)
+    print(x)
+    return x, absErr, errorDataConjugateGradients
+
+
+def ConjugateGradientsHS2(M, b):
+    avoidDivByZeroError = 0.000000001
+    errorDataConjugateGradients = []
+    x = np.zeros_like(b)
+    r = np.subtract(b, M.dot(x))
+    d = r
+    delta_new = r.dot(r)
+    for i in range((N + 1) * (N + 1)):
+    	err = np.subtract(M.dot(x), b)
+        absErr = np.linalg.norm(err)
+        errorDataConjugateGradients.append(absErr)
+
+        q = M.dot(d)
+
+        alpha_numerator = delta_new
+        alpha_denominator = d.dot(q)
+        if(alpha_denominator < avoidDivByZeroError):
+    		break
+    	alpha = 1.0 * alpha_numerator / alpha_denominator
+    	x = np.add(x, np.multiply(d, alpha))
+    	r = np.subtract(r, np.multiply(q, alpha))
+    	delta_old = delta_new
+    	delta_new = r.dot(r)
+    	if(delta_old < avoidDivByZeroError):
+    		break
+    	beta = 1.0 * delta_new / delta_old
+
+    	d = r + np.multiply(d, beta)
+    err = np.subtract(M.dot(x), b)
+    absErr = math.sqrt(err.dot(err))
+    errorDataConjugateGradients.append(absErr)
+    return x, absErr, errorDataConjugateGradients
+
+def ConjugateGradients_Golub(A, b):
+	errorDataConjugateGradients = []
+	tol = 0.000001
+	k = 0
+	x = np.zeros_like(b)
+	r = np.subtract(b, A.dot(x))
+	ro_c = r.dot(r)
+	delta = tol * np.linalg.norm(b)
+	while math.sqrt(ro_c) > delta:
+		err = np.subtract(M.dot(x), b)
+		absErr = np.linalg.norm(err)
+		errorDataConjugateGradients.append(absErr)
+		k = k + 1
+		if(k == 1):
+			p = r
+		else:
+			tau = ro_c / ro_minus
+			p = np.add(r, np.multiply(p, tau))
+		w = A.dot(p)
+		miu_nominator = ro_c
+		miu_denominator = w.dot(p)
+		miu = miu_nominator / miu_denominator
+		x = np.add(x, np.multiply(p, miu))
+		r = np.subtract(r, np.multiply(w, miu))
+		ro_minus = ro_c
+		ro_c = r.dot(r)
+
+	err = np.subtract(M.dot(x), b)
+	absErr = np.linalg.norm(err)
+	errorDataConjugateGradients.append(absErr)
+	return x, absErr, errorDataConjugateGradients
 #____________________________________________#
 
 
 # Value of the border function on values x,y
 def borderFunction(x, y):
     # Assert (x,y) is on border
-    value = 1
+    value = 1.0 * math.sin(x) * math.sin(y)
     return value
 
 
 # Nabla value of the differential equation at points x, y
 def nablaFunction(x, y):
-    value = 0
+    value = - 2.0 * math.sin(x) * math.sin(y)
     return value
 
 
-# NablaValueVector from Mx = nablaValueVector
-nablaValueVector = []
+# NablaValueVector from Mx = valueVector2D
+valueVector2D = []
 
 
 # Check if a(i,j) is on border
 def isOnBorder(i, j):
-    if(i == 0 or j == 0 or i == N - 1 or j == N - 1):
+    # print(i, j)
+    if(i == 0 or j == 0 or i == N or j == N):
         return True
     else:
         return False
@@ -209,18 +324,18 @@ def isOnBorder(i, j):
 
 # Get the coordinates of the variable around which the row-th row is created
 def getCoordinates(row):
-    return int(row / N), row % N
+    return int(row / (N + 1)), row % (N + 1)
 
 
 # Get the row of a(i, j)'s equation
 def getRow(i, j):
-    return(i * N + j)
+    return(i * (N + 1) + j)
 
 
-# Compute M and nablaValueVector (in Mx = nablaValueVector) and
+# Compute M and valueVector2D (in Mx = valueVector2D) and
 # computer L, U, D (lower, strictly upper and diagonal matrices of M)
 def computeMatrixAndVector():
-    for currentRow in range(N * N):
+    for currentRow in range((N + 1) * (N + 1)):
         computeRow(currentRow)
 
 
@@ -228,21 +343,21 @@ def computeMatrixAndVector():
 def computeRow(row):
     (x, y) = getCoordinates(row)
     if(isOnBorder(x, y)):
-        addEntryToMatrices(row, row, 1)
+        addEntryToMatrices(row, row, 1.0)
         # The value of the border on point x/N, y/N is known,
         # so append the equation variable = value to the system
-        nablaValueVector.append(borderFunction(x / N, y / N))
+        valueVector2D.append(borderFunction((1.0) * x / N, (1.0) * y / N))
     else:
-        value = - nablaFunction(x / N, y / N) * h * h
-        addEntryToMatrices(row, row, 4)
+        value = - nablaFunction((1.0) * x / N, (1.0) * y / N) * h * h
+        addEntryToMatrices(row, row, 4.0)
 
         for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             if(not(isOnBorder(x + dX, y + dY))):
-                addEntryToMatrices(row, getRow(x + dX, y + dY), -1)
+                addEntryToMatrices(row, getRow(x + dX, y + dY), -1.0)
             else:
-                localValue = borderFunction((x + dX) / N, (y + dY) / N)
+                localValue = borderFunction((1.0) * (x + dX) / N, (1.0) * (y + dY) / N)
                 value += localValue
-        nablaValueVector.append(value)
+        valueVector2D.append(value)
 
 
 # Current value vector i.e. current value (at current time k * dT) of f(x,y,t) in du/dt - laplace(u) = f
@@ -273,7 +388,7 @@ def borderTimeFunction(x, y, t):
     return value
 
 
-# Compute M and nablaValueVector (in Mx = nablaValueVector) and
+# Compute M and valueVector2D (in Mx = valueVector2D) and
 # computer L, U, D (lower, strictly upper and diagonal matrices of M)
 def computeMatrixHeatTimeEquation():
     for currentRow in range(N * N):
@@ -348,11 +463,26 @@ colListLower = []
 dataListLower = []
 
 # In the current format, just call one of the two computeMatrix functions below
-# computeMatrixAndVector()
-computeMatrixHeatTimeEquation()
+computeMatrixAndVector()
+# computeMatrixHeatTimeEquation()
+
+# error_test = []
+# rowList2 = [0,0,1,1]
+# colList2 = [0,1,0,1]
+# dataList2 = [4,1,1,3]
+# b = []
+# b.append(1)
+# b.append(2)
+# M_test = csr_matrix((np.array(dataList2), (np.array(rowList2), np.array(colList2))), shape = (2, 2))
+
+# (solution_test, error_abs_test, error_test) = ConjugateGradientsHS_test(M_test, b)
+
+
+
+
 
 # Instantiate sparse matrix M according to data kept in (rowList, colList, dataList)
-M = csr_matrix((np.array(dataList), (np.array(rowList), np.array(colList))), shape = (N * N, N * N))
+M = csr_matrix((np.array(dataList), (np.array(rowList), np.array(colList))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
 Mt = M.transpose()
 Msym = np.subtract(M, Mt)
 maxMSym = Msym.max()
@@ -361,14 +491,15 @@ minMSym = Msym.min()
 if(maxMSym != 0 or minMSym != 0):
 	print('Matrix not symmetric!!')
 	sys.exit(1)
+# print(is_pos_def(M.toarray()))
 
 # Diagonal and remainging matrices D, R with D + R = M
-D = csr_matrix((np.array(dataListDiagonal), (np.array(rowListDiagonal), np.array(colListDiagonal))), shape = (N * N, N * N))
-R = csr_matrix((np.array(dataListRemainder), (np.array(rowListRemainder), np.array(colListRemainder))), shape = (N * N, N * N))
+D = csr_matrix((np.array(dataListDiagonal), (np.array(rowListDiagonal), np.array(colListDiagonal))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
+R = csr_matrix((np.array(dataListRemainder), (np.array(rowListRemainder), np.array(colListRemainder))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
 
 # Lower and strictly upper matrices L, U with L + U = M
-L = csr_matrix((np.array(dataListLower), (np.array(rowListLower), np.array(colListLower))), shape = (N * N, N * N))
-U = csr_matrix((np.array(dataListUpper), (np.array(rowListUpper), np.array(colListUpper))), shape = (N * N, N * N))
+L = csr_matrix((np.array(dataListLower), (np.array(rowListLower), np.array(colListLower))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
+U = csr_matrix((np.array(dataListUpper), (np.array(rowListUpper), np.array(colListUpper))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
 
 # Error data after each iteration
 errorDataJacobi = []
@@ -376,25 +507,30 @@ errorDataGaussSeidel = []
 errorDataSteepestDescent = []
 errorDataConjugateGradients = []
 errorDataHeatConjugateGradients = []
+errorDataConjugateGradients2 = []
+# solHeat = initialHeatTimeSolution()
+# for k in range(1, T + 1):
+# 	t = k * dT
+# 	valueVector = computeVectorAtTimestep(k, solHeat)
+# 	(solHeat, errHeat, errorDataHeatConjugateGradients) = ConjugateGradientsHS(M, valueVector)
+# 	print(errHeat)
 
-solHeat = initialHeatTimeSolution()
-for k in range(1, T + 1):
-	t = k * dT
-	valueVector = computeVectorAtTimestep(k, solHeat)
-	(solHeat, errHeat, errorDataHeatConjugateGradients) = ConjugateGradientsHS(M, valueVector)
-	print(errHeat)
-
-# (solution, error) = JacobiIterate(D, R, M, nablaValueVector)
-# (solution2, error2) = GaussSeidelIterate(L, U, M, nablaValueVector)
-# (solution3, error3) = SteepestDescent(M, nablaValueVector)
-# (solution4, error4, errorDataConjugateGradients) = ConjugateGradientsHS(M, nablaValueVector)
+# (solution, error) = JacobiIterate(D, R, M, valueVector2D)
+# (solution2, error2) = GaussSeidelIterate(L, U, M, valueVector2D)
+# (solution3, error3) = SteepestDescent(M, valueVector2D)
+(solution4, error4, errorDataConjugateGradients) = ConjugateGradientsHS(M, valueVector2D)
+(solution5, error5, errorDataConjugateGradients2) = ConjugateGradientsHS2(M, valueVector2D)
+(solution6, error6, errorDataConjugateGradients3) = ConjugateGradients_Golub(M, valueVector2D)
 
 # plt.plot(errorDataJacobi, label = 'Jacobi')
 # plt.plot(errorDataGaussSeidel, label = 'Gauss-Seidel')
 # plt.plot(errorDataSteepestDescent, label = 'Steepest Descent')
-# plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients')
-# plt.legend(loc='upper right')
-# plt.show()
+plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients')
+plt.plot(errorDataConjugateGradients2, label = 'Conjugate Gradients 2')
+plt.plot(errorDataConjugateGradients3, label = 'Conjugate Gradients 3')
+
+plt.legend(loc='upper right')
+plt.show()
 # Next lines are for debugging purpose
 
 # print('Solution of Jacobi Iteration:')
@@ -417,6 +553,16 @@ for k in range(1, T + 1):
 
 # print('Solution of CG Iteration:')
 # print(solution4)
+actualSolution = []
+for i in range(N + 1):
+	for j in range(N + 1):
+		actualSolution.append(math.sin((1.0) * i / N) * math.sin((1.0) * j / N))
+
+# print actualSolution
+
+solutionError = np.subtract(solution4, actualSolution)
+print(np.linalg.norm(solutionError))
+
 # print('Error of CG Iteration:')
 # print(error4)
 # print('_________')
@@ -428,7 +574,7 @@ for k in range(1, T + 1):
 # print(U.toarray())
 # print(D.toarray())
 #
-# print(nablaValueVector)
+# print(valueVector2D)
 # print(M.data())
 # print(*rowList, sep=' ')
 # print(*colList, sep=' ')
@@ -440,7 +586,6 @@ for k in range(1, T + 1):
 #    to instantiate it for different problems and test the efficiency easier
 
 # Sample output for N = 4 (we're showing the matrix and the nabla vector)
-
 
 # Enter inverse of sample rate
 # 4
