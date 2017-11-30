@@ -155,7 +155,9 @@ def SteepestDescent(M, b):
     errorDataSteepestDescent.append(absErr)
     return x, absErr
 
-
+# ActualSolution will hold the discretization for f = sin x sin y
+# and is used for debugging purposes
+actualSolution = []
 
 def ConjugateGradientsHS(M, b):
     avoidDivByZeroError = 0.0000000001
@@ -164,8 +166,8 @@ def ConjugateGradientsHS(M, b):
     r = np.subtract(b, M.dot(x))
     d = np.subtract(b, M.dot(x))
     for i in range((N+1)*(N+1)):
-    	err = np.subtract(M.dot(x), b)
-        absErr = np.linalg.norm(err)
+        solutionError = np.subtract(x, actualSolution)
+        absErr = np.linalg.norm(solutionError)
         errorDataConjugateGradients.append(absErr)
 
         alpha_numerator = r.dot(r)
@@ -186,81 +188,11 @@ def ConjugateGradientsHS(M, b):
     	d = r_new + np.multiply(d, beta)
     	r = r_new
 
-    err = np.subtract(M.dot(x), b)
-    absErr = math.sqrt(err.dot(err))
+    solutionError = np.subtract(x, actualSolution)
+    absErr = np.linalg.norm(solutionError)
     errorDataConjugateGradients.append(absErr)
     return x, absErr, errorDataConjugateGradients
 
-
-
-def ConjugateGradientsHS_test(M, b):
-    avoidDivByZeroError = 0.000001
-    errorDataConjugateGradients = []
-    x = []
-    x.append(2)
-    x.append(1)
-    r = np.subtract(b, M.dot(x))
-    d = np.subtract(b, M.dot(x))
-    iterationConstant = globalIterationConstant
-    for i in range(2):
-    	err = np.subtract(M.dot(x), b)
-        absErr = np.linalg.norm(err)
-        errorDataConjugateGradients.append(absErr)
-
-        alpha_numerator = r.dot(r)
-        alpha_denominator = d.dot(M.dot(d))
-        if(alpha_denominator < avoidDivByZeroError):
-    		break
-    	alpha = 1.0 * alpha_numerator / alpha_denominator
-    	x = np.add(x, np.multiply(d, alpha))
-    	r_new = np.subtract(r, np.multiply(M.dot(d), alpha))
-
-    	beta_numerator = r_new.dot(r_new)
-    	beta_denominator = r.dot(r)
-    	if(beta_denominator < avoidDivByZeroError):
-    		break
-    	beta = 1.0 * beta_numerator / beta_denominator
-    	d = r_new + np.multiply(d, beta)
-    	r = r_new
-    err = np.subtract(M.dot(x), b)
-    absErr = math.sqrt(err.dot(err))
-    errorDataConjugateGradients.append(absErr)
-    print(x)
-    return x, absErr, errorDataConjugateGradients
-
-
-def ConjugateGradientsHS2(M, b):
-    avoidDivByZeroError = 0.000000001
-    errorDataConjugateGradients = []
-    x = np.zeros_like(b)
-    r = np.subtract(b, M.dot(x))
-    d = r
-    delta_new = r.dot(r)
-    for i in range((N + 1) * (N + 1)):
-    	err = np.subtract(M.dot(x), b)
-        absErr = np.linalg.norm(err)
-        errorDataConjugateGradients.append(absErr)
-
-        q = M.dot(d)
-
-        alpha_numerator = delta_new
-        alpha_denominator = d.dot(q)
-        if(alpha_denominator < avoidDivByZeroError):
-    		break
-    	alpha = 1.0 * alpha_numerator / alpha_denominator
-    	x = np.add(x, np.multiply(d, alpha))
-    	r = np.subtract(r, np.multiply(q, alpha))
-    	delta_old = delta_new
-    	delta_new = r.dot(r)
-    	if(delta_old < avoidDivByZeroError):
-    		break
-    	beta = 1.0 * delta_new / delta_old
-
-    	d = r + np.multiply(d, beta)
-    err = np.subtract(M.dot(x), b)
-    absErr = math.sqrt(err.dot(err))
-    errorDataConjugateGradients.append(absErr)
-    return x, absErr, errorDataConjugateGradients
 
 def ConjugateGradients_Golub(A, b):
 	errorDataConjugateGradients = []
@@ -466,20 +398,6 @@ dataListLower = []
 computeMatrixAndVector()
 # computeMatrixHeatTimeEquation()
 
-# error_test = []
-# rowList2 = [0,0,1,1]
-# colList2 = [0,1,0,1]
-# dataList2 = [4,1,1,3]
-# b = []
-# b.append(1)
-# b.append(2)
-# M_test = csr_matrix((np.array(dataList2), (np.array(rowList2), np.array(colList2))), shape = (2, 2))
-
-# (solution_test, error_abs_test, error_test) = ConjugateGradientsHS_test(M_test, b)
-
-
-
-
 
 # Instantiate sparse matrix M according to data kept in (rowList, colList, dataList)
 M = csr_matrix((np.array(dataList), (np.array(rowList), np.array(colList))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
@@ -516,21 +434,24 @@ errorDataConjugateGradients2 = []
 # 	print(errHeat)
 
 # (solution, error) = JacobiIterate(D, R, M, valueVector2D)
-# (solution2, error2) = GaussSeidelIterate(L, U, M, valueVector2D)
+(solution2, error2) = GaussSeidelIterate(L, U, M, valueVector2D)
 # (solution3, error3) = SteepestDescent(M, valueVector2D)
-(solution4, error4, errorDataConjugateGradients) = ConjugateGradientsHS(M, valueVector2D)
-(solution5, error5, errorDataConjugateGradients2) = ConjugateGradientsHS2(M, valueVector2D)
-(solution6, error6, errorDataConjugateGradients3) = ConjugateGradients_Golub(M, valueVector2D)
+# for i in range(N + 1):
+# 	for j in range(N + 1):
+# 		actualSolution.append(math.sin((1.0) * i / N) * math.sin((1.0) * j / N))
+# (solution4, error4, errorDataConjugateGradients) = ConjugateGradientsHS(M, valueVector2D)
+# (solution5, error5, errorDataConjugateGradients2) = ConjugateGradientsHS2(M, valueVector2D)
+# (solution6, error6, errorDataConjugateGradients3) = ConjugateGradients_Golub(M, valueVector2D)
 
 # plt.plot(errorDataJacobi, label = 'Jacobi')
 # plt.plot(errorDataGaussSeidel, label = 'Gauss-Seidel')
 # plt.plot(errorDataSteepestDescent, label = 'Steepest Descent')
-plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients')
-plt.plot(errorDataConjugateGradients2, label = 'Conjugate Gradients 2')
-plt.plot(errorDataConjugateGradients3, label = 'Conjugate Gradients 3')
+# plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients - x error')
+# plt.plot(errorDataConjugateGradients2, label = 'Conjugate Gradients - Ax error')
+# plt.plot(errorDataConjugateGradients3, label = 'Conjugate Gradients 3')
 
-plt.legend(loc='upper right')
-plt.show()
+# plt.legend(loc='upper right')
+# plt.show()
 # Next lines are for debugging purpose
 
 # print('Solution of Jacobi Iteration:')
@@ -553,15 +474,8 @@ plt.show()
 
 # print('Solution of CG Iteration:')
 # print(solution4)
-actualSolution = []
-for i in range(N + 1):
-	for j in range(N + 1):
-		actualSolution.append(math.sin((1.0) * i / N) * math.sin((1.0) * j / N))
 
 # print actualSolution
-
-solutionError = np.subtract(solution4, actualSolution)
-print(np.linalg.norm(solutionError))
 
 # print('Error of CG Iteration:')
 # print(error4)
