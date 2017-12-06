@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.sparse import *
 from scipy import *
+import numpy.linalg as la
+import matplotlib.pyplot as plt
 
 COMPLETE_MATRIX = 'COMPLETE_MATRIX'
 LOWER_MATRIX = 'LOWER_MATRIX'
@@ -8,25 +10,130 @@ STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
 DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
 REMAINDER_MATRIX = 'REMAINDER_MATRIX'
 
+tol = 0.0001
+
+class MultiGrid:
+
+	def __init__(self, borderFunction, valueFunction, niu1 = 5, niu2 = 5):
+		self.borderFunction = borderFunction
+		self.valueFunction = valueFunction
+		self.niu1 = niu1
+		self.niu2 = niu2
+
+
+	def getCoordinates(self, row, N):
+	    return int(row / (N + 1)), row % (N + 1)
+
+	def getRow(self, i, j, N):
+	    return(i * (N + 1) + j)
+
+
+	def restrict(self, r, N):
+		restr = []
+
+		for(i,elem) in enumerate(r):
+			(x, y) = self.getCoordinates(i, N)
+
+			if(x%2 == 0 and y%2 ==0):
+				restr.append(elem)
+
+		return restr
+
+	def interpolate(self, r, fineN, coarseN):
+		interp = []
+		for i in range((fineN + 1) * (fineN + 1)):
+			(x, y) = self.getCoordinates(i, fineN)
+			if(x % 2 == 0 and y % 2 == 0):
+				index = self.getRow(x / 2, y / 2, coarseN)
+				interp.append(r[index])
+			elif(x % 2 == 1 and y % 2 == 0):
+				index1 = self.getRow((x-1) / 2, y /2, coarseN)
+				index2 = self.getRow((x+1) / 2, y /2, coarseN)
+				interp.append((r[index1] + r[index2]) / 2.0)
+			elif(x % 2 == 0 and y % 2 == 1):
+				index1 = self.getRow(x / 2, (y-1) /2, coarseN)
+				index2 = self.getRow(x / 2, (y+1) /2, coarseN)
+				interp.append((r[index1] + r[index2]) / 2.0)
+			else:
+				index1 = self.getRow((x-1) / 2, (y-1) /2, coarseN)
+				index2 = self.getRow((x+1) / 2, (y-1) /2, coarseN)
+				index3 = self.getRow((x-1) / 2, (y+1) /2, coarseN)
+				index4 = self.getRow((x+1) / 2, (y+1) /2, coarseN)
+				interp.append((r[index1] + r[index2] + r[index3] + r[index4])/4.0)
+
+		return interp
+
+
+	def vcycle(self, N, f, initSol = []):
+		discr = SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
+
+		fSize = len(f)
+		if(fSize < 20):
+			v = la.solve(discr.M.todense(), f)
+			return v
+
+		solver1 = SolverMethods(self.niu1, discr, f, initSol)
+		v, _, _, _ = solver1.JacobiIterate()
+
+		assert(N % 2 == 0)
+		coarseN = N  / 2
+
+		Mv = discr.M.dot(v)
+		residual = np.subtract(np.array(f), Mv)
+		coarseResidual = self.restrict(residual, N)
+
+		coarseV = self.vcycle(coarseN, coarseResidual)
+		fineV = self.interpolate(coarseV, N, coarseN)
+		v = np.add(v, fineV)
+
+		solver2 = SolverMethods(self.niu2, discr, f, v)
+		v2, _, _, _ = solver2.JacobiIterate()
+		return v2
+
+	def iterateVCycles(self, N, f, t):
+		initSol = []
+		vErrors = []
+		discr = SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
+
+		for i in range(t):
+			currSol = self.vcycle(N, f, initSol)
+
+			err = np.subtract(discr.M.dot(currSol), discr.valueVector2D)
+			absErr = math.sqrt(err.dot(err))
+			if(absErr < tol):
+				break
+			vErrors.append(math.log(absErr))
+
+			initSol = currSol
+
+		return currSol, vErrors
+
 class SolverMethods:
 	# Iterative methods for solving a linear system
 
-	def __init__(self, iterationConstant, eqDiscretizer):
+	def __init__(self, iterationConstant, eqDiscretizer, b = [], initSol = []):
 		self.iterationConstant = iterationConstant
 		self.M = eqDiscretizer.M
 		self.D = eqDiscretizer.D
 		self.R = eqDiscretizer.R
 		self.L = eqDiscretizer.L
 		self.U = eqDiscretizer.U
-		self.b = eqDiscretizer.valueVector2D
+		if(b == []) :
+			self.b = eqDiscretizer.valueVector2D
+		else:
+			self.b = b
+		self.initSol = initSol
 
 	def JacobiIterate(self):
 	    errorDataJacobi = []
 	    x = []
 	    d = self.D.diagonal()
 	    iterationConstant = self.iterationConstant
-	    # Initial guess is x = (0,0,...0)
-	    x = np.zeros_like(self.b)
+	    # Initial guess is x = (0,0,...0) if not provided as a parameter
+	    if(self.initSol == []):
+	    	x = np.zeros_like(self.b)
+	    else:
+	    	x = self.initSol
 	    # Iterate constant number of times (TODO: iterate while big error Mx-b)
 	    for i in range(iterationConstant):
 	        err = np.subtract(self.M.dot(x), self.b)
@@ -49,7 +156,6 @@ class SolverMethods:
 	    x = np.zeros_like(self.b)
 	    # Iterate constant number of times (TODO: iterate while big error Mx-b)
 	    for i in range(iterationConstant):
-	    	print(i)
 	        err = np.subtract(self.M.dot(x), self.b)
 	        absErr = math.sqrt(err.dot(err))
 	        errorDataGaussSeidel.append(absErr)
@@ -102,7 +208,6 @@ class SimpleEquationDiscretizer:
 		self.valueVector2D = []
 
 		self.computeMatrixAndVector()
-
 		self.M = csr_matrix((np.array(self.dataList), (np.array(self.rowList), np.array(self.colList))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
 		self.D = csr_matrix((np.array(self.dataListDiagonal), (np.array(self.rowListDiagonal), np.array(self.colListDiagonal))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
 		self.R = csr_matrix((np.array(self.dataListRemainder), (np.array(self.rowListRemainder), np.array(self.colListRemainder))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
@@ -153,7 +258,7 @@ class SimpleEquationDiscretizer:
 	# Check if a(i,j) is on border
 	def isOnBorder(self, i, j):
 	    # print(i, j)
-	    if(i == 0 or j == 0 or i == N or j == N):
+	    if(i == 0 or j == 0 or i == self.N or j == self.N):
 	        return True
 	    else:
 	        return False
@@ -161,12 +266,12 @@ class SimpleEquationDiscretizer:
 
 	# Get the coordinates of the variable around which the row-th row is created
 	def getCoordinates(self, row):
-	    return int(row / (N + 1)), row % (N + 1)
+	    return int(row / (self.N + 1)), row % (self.N + 1)
 
 
 	# Get the row of a(i, j)'s equation
 	def getRow(self, i, j):
-	    return(i * (N + 1) + j)
+	    return(i * (self.N + 1) + j)
 
 
 	# Compute M and valueVector2D (in Mx = valueVector2D) and
@@ -178,22 +283,21 @@ class SimpleEquationDiscretizer:
 
 	# Compute the elements of row-th row in (rowList, colList, dataList) for -nabla f(x,t) = g(x,t) problem
 	def computeRow(self, row):
-	    print(row)
 	    (x, y) = self.getCoordinates(row)
 	    if(self.isOnBorder(x, y)):
 	        self.addEntryToMatrices(row, row, 1.0)
 	        # The value of the border on point x/N, y/N is known,
 	        # so append the equation variable = value to the system
-	        self.valueVector2D.append(self.borderFunction((1.0) * x / N, (1.0) * y / N))
+	        self.valueVector2D.append(self.borderFunction((1.0) * x / self.N, (1.0) * y / self.N))
 	    else:
-	        value = - self.valueFunction((1.0) * x / N, (1.0) * y / N) * self.h * self.h
+	        value = - self.valueFunction((1.0) * x / self.N, (1.0) * y / self.N) * self.h * self.h
 	        self.addEntryToMatrices(row, row, 4.0)
 
 	        for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
 	            if(not(self.isOnBorder(x + dX, y + dY))):
 	                self.addEntryToMatrices(row, self.getRow(x + dX, y + dY), -1.0)
 	            else:
-	                localValue = self.borderFunction((1.0) * (x + dX) / N, (1.0) * (y + dY) / N)
+	                localValue = self.borderFunction((1.0) * (x + dX) / self.N, (1.0) * (y + dY) / self.N)
 	                value += localValue
 	        self.valueVector2D.append(value)
 
@@ -214,22 +318,36 @@ def sinValueFunction(x, y):
 
 N = int(input("Enter inverse of coordinates sample rate for the coarser grid\n"))
 
-sinEquationDiscrFine = SimpleEquationDiscretizer(2 * N, sinBorderFunction, sinValueFunction)
+sinEquationDiscr = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
 
-solver = SolverMethods(5, sinEquationDiscr)
-(xFine, absErr, errorDataJacobi, rFine) = solver.JacobiIterate()
+# solver = SolverMethods(100, sinEquationDiscr)
+# (xFine, absErr, errorDataJacobi, rFine) = solver.JacobiIterate()
 
-# TODO: Define restrict to maxe the grid 2x coarser for height and width
-rCoarse = restrict(rFine)
-sinEquationDiscrCoarse = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
-sinEquationDiscrCoarse.valueVector2D = rCoarse
+# print(errorDataJacobi)
+n = 2
+while(n < N):
+	n = n * 2
+	sinEquationDiscr = SimpleEquationDiscretizer(n, sinBorderFunction, sinValueFunction)
+	mg = MultiGrid(sinBorderFunction, sinValueFunction)
+	solMG, vErrors = mg.iterateVCycles(n, sinEquationDiscr.valueVector2D, 600)
+	# solMG = mg.vcycle(N, sinEquationDiscr.valueVector2D)
+	# print(solMG)
+	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
+	plt.plot(vErrors, label = str(n))
+	plt.legend(loc='upper right')
 
-xCoarse = solve(sinEquationDiscrCoarse, rCoarse)
+plt.show()
+# # TODO: Define restrict to maxe the grid 2x coarser for height and width
+# rCoarse = restrict(rFine)
+# sinEquationDiscrCoarse = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
+# sinEquationDiscrCoarse.valueVector2D = rCoarse
 
-xFineCorrection = interpolate(xCoarse)
+# xCoarse = solve(sinEquationDiscrCoarse, rCoarse)
 
-x = np.add(xFine, xFineCorrection)
-xSol = solver.JacobiIterateWithInitSol(x)
+# xFineCorrection = interpolate(xCoarse)
+
+# x = np.add(xFine, xFineCorrection)
+# xSol = solver.JacobiIterateWithInitSol(x)
 
 # Q: GS slow because I'm not using matrix operations, in 50 iterations for N = 100
 # the error norm for the correct sol is 22, and there are 10.000 entries
@@ -244,7 +362,7 @@ xSol = solver.JacobiIterateWithInitSol(x)
 # 	for j in range(N + 1):
 # 		actualSolution.append(math.sin((1.0) * i / N) * math.sin((1.0) * j / N))
 
-# solutionError = np.subtract(x, actualSolution)
+# solutionError = np.subtract(solMG, actualSolution)
 # absErr = np.linalg.norm(solutionError)
 
 # print('Solution obtained:')
