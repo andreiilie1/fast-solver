@@ -3,6 +3,7 @@ from scipy.sparse import *
 from scipy import *
 import numpy.linalg as la
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 COMPLETE_MATRIX = 'COMPLETE_MATRIX'
 LOWER_MATRIX = 'LOWER_MATRIX'
@@ -10,7 +11,7 @@ STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
 DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
 REMAINDER_MATRIX = 'REMAINDER_MATRIX'
 
-tol = 0.0001
+tol = 0.000001
 
 class MultiGrid:
 
@@ -90,10 +91,11 @@ class MultiGrid:
 		v2, _, _, _ = solver2.JacobiIterate()
 		return v2
 
-	def iterateVCycles(self, N, f, t):
+	def iterateVCycles(self, N, t):
 		initSol = []
 		vErrors = []
 		discr = SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
+		f = discr.valueVector2D
 
 		for i in range(t):
 			currSol = self.vcycle(N, f, initSol)
@@ -153,7 +155,10 @@ class SolverMethods:
 	    d = self.L.diagonal()
 	    iterationConstant = self.iterationConstant
 	    # Initial guess is x = (0,0,...0)
-	    x = np.zeros_like(self.b)
+	    if(self.initSol == []):
+	    	x = np.zeros_like(self.b)
+	    else:
+	    	x = self.initSol
 	    # Iterate constant number of times (TODO: iterate while big error Mx-b)
 	    for i in range(iterationConstant):
 	        err = np.subtract(self.M.dot(x), self.b)
@@ -314,6 +319,14 @@ def sinValueFunction(x, y):
     value = - 2.0 * math.sin(x) * math.sin(y)
     return value
 
+def borderFunction1(x, y):
+	value = 1.0 * x * y * (x + y)
+	return value
+
+def valueFunction1(x, y):
+	value = 2.0 * x + 2.0 * y
+	return value
+
 
 
 N = int(input("Enter inverse of coordinates sample rate for the coarser grid\n"))
@@ -325,16 +338,45 @@ sinEquationDiscr = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunct
 
 # print(errorDataJacobi)
 n = 2
+i = 0
+fig = plt.figure()
 while(n < N):
+	i = i + 1
 	n = n * 2
+	h = 1.0 / n
+	ax = fig.add_subplot(220 + i, projection='3d')
+	ax.title.set_text("N = " + str(n))
+	x = y = np.arange(0.0, 1.0 + h, h)
+	X, Y = np.meshgrid(x, y)
+
 	sinEquationDiscr = SimpleEquationDiscretizer(n, sinBorderFunction, sinValueFunction)
 	mg = MultiGrid(sinBorderFunction, sinValueFunction)
-	solMG, vErrors = mg.iterateVCycles(n, sinEquationDiscr.valueVector2D, 600)
+	solMG, vErrors = mg.iterateVCycles(n, 600)
+	Z = np.reshape(solMG, (n+1, n+1))
+
+	ax.plot_wireframe(X, Y, Z)
+
+	ax.set_xlabel('X Label')
+	ax.set_ylabel('Y Label')
+	ax.set_zlabel('Z Label')
+	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
 	# solMG = mg.vcycle(N, sinEquationDiscr.valueVector2D)
 	# print(solMG)
-	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
-	plt.plot(vErrors, label = str(n))
-	plt.legend(loc='upper right')
+	# print('last error:', math.exp(vErrors[len(vErrors) - 1]))
+	# plt.plot(vErrors, label = str(n))
+	# plt.legend(loc='upper right')
+
+# while(n < N):
+# 	n = n * 2
+# 	eqDiscr = SimpleEquationDiscretizer(n, borderFunction1, valueFunction1)
+# 	mg = MultiGrid(borderFunction1, valueFunction1)
+# 	solMG, vErrors = mg.iterateVCycles(n, eqDiscr.valueVector2D, 600)
+# 	# solMG = mg.vcycle(N, sinEquationDiscr.valueVector2D)
+# 	# print(solMG)
+# 	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
+# 	# plt.plot(vErrors, label = str(n))
+# 	# plt.legend(loc='upper right')
+# 	print(vErrors)
 
 plt.show()
 # # TODO: Define restrict to maxe the grid 2x coarser for height and width
