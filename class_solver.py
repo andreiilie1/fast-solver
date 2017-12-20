@@ -15,7 +15,7 @@ tol = 0.000001
 
 class MultiGrid:
 
-	def __init__(self, borderFunction, valueFunction, niu1 = 5, niu2 = 5):
+	def __init__(self, borderFunction, valueFunction, niu1 = 3, niu2 = 3):
 		self.borderFunction = borderFunction
 		self.valueFunction = valueFunction
 		self.niu1 = niu1
@@ -29,11 +29,11 @@ class MultiGrid:
 	    return(i * (N + 1) + j)
 
 
-	def restrict(self, r, N):
+	def restrict(self, r, fineN, coarseN):
 		restr = []
 
 		for(i,elem) in enumerate(r):
-			(x, y) = self.getCoordinates(i, N)
+			(x, y) = self.getCoordinates(i, fineN)
 
 			if(x%2 == 0 and y%2 ==0):
 				restr.append(elem)
@@ -42,27 +42,56 @@ class MultiGrid:
 
 	def interpolate(self, r, fineN, coarseN):
 		interp = []
+
 		for i in range((fineN + 1) * (fineN + 1)):
 			(x, y) = self.getCoordinates(i, fineN)
 			if(x % 2 == 0 and y % 2 == 0):
 				index = self.getRow(x / 2, y / 2, coarseN)
 				interp.append(r[index])
 			elif(x % 2 == 1 and y % 2 == 0):
-				index1 = self.getRow((x-1) / 2, y /2, coarseN)
-				index2 = self.getRow((x+1) / 2, y /2, coarseN)
+				index1 = self.getRow((x - 1) / 2, y / 2, coarseN)
+				index2 = self.getRow((x + 1) / 2, y / 2, coarseN)
 				interp.append((r[index1] + r[index2]) / 2.0)
 			elif(x % 2 == 0 and y % 2 == 1):
-				index1 = self.getRow(x / 2, (y-1) /2, coarseN)
-				index2 = self.getRow(x / 2, (y+1) /2, coarseN)
+				index1 = self.getRow(x / 2, (y - 1) / 2, coarseN)
+				index2 = self.getRow(x / 2, (y + 1) / 2, coarseN)
 				interp.append((r[index1] + r[index2]) / 2.0)
 			else:
-				index1 = self.getRow((x-1) / 2, (y-1) /2, coarseN)
-				index2 = self.getRow((x+1) / 2, (y-1) /2, coarseN)
-				index3 = self.getRow((x-1) / 2, (y+1) /2, coarseN)
-				index4 = self.getRow((x+1) / 2, (y+1) /2, coarseN)
-				interp.append((r[index1] + r[index2] + r[index3] + r[index4])/4.0)
+				index1 = self.getRow((x - 1) / 2, (y - 1) / 2, coarseN)
+				index2 = self.getRow((x + 1) / 2, (y - 1) / 2, coarseN)
+				index3 = self.getRow((x - 1) / 2, (y + 1) / 2, coarseN)
+				index4 = self.getRow((x + 1) / 2, (y + 1) / 2, coarseN)
+				interp.append((r[index1] + r[index2] + r[index3] + r[index4]) / 4.0)
 
 		return interp
+
+
+	def restrictTransposeAction(self, r, fineN, coarseN):
+		restr = []
+
+		for i in range((coarseN + 1) * (coarseN + 1)):
+			(x, y) = self.getCoordinates(i, coarseN)
+			(x, y) = (2 * x, 2 * y)
+			newEntry = r[self.getRow(x, y, fineN)]
+
+			for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+				newX = x + dX
+				newY = y + dY
+				if(0 <= newX and newX <= fineN and 0 <= newY and newY <= fineN):
+					index = self.getRow(newX, newY, fineN)
+					newEntry += 0.5 * r[index]
+
+			for (dX, dY) in [(1, 1), (-1, 1), (-1, -1), (1, -1)]:
+				newX = x + dX
+				newY = y + dY
+				if(0 <= newX and newX <= fineN and 0 <= newY and newY <= fineN):
+					index = self.getRow(newX, newY, fineN)
+					newEntry += 0.25 * r[index]
+
+			newEntry = newEntry * 0.25
+			restr.append(newEntry)
+
+		return restr
 
 
 	def vcycle(self, N, f, initSol = []):
@@ -81,7 +110,7 @@ class MultiGrid:
 
 		Mv = discr.M.dot(v)
 		residual = np.subtract(np.array(f), Mv)
-		coarseResidual = self.restrict(residual, N)
+		coarseResidual = self.restrictTransposeAction(residual, N, coarseN)
 
 		coarseV = self.vcycle(coarseN, coarseResidual)
 		fineV = self.interpolate(coarseV, N, coarseN)
@@ -337,48 +366,56 @@ sinEquationDiscr = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunct
 # (xFine, absErr, errorDataJacobi, rFine) = solver.JacobiIterate()
 
 # print(errorDataJacobi)
+
 n = 2
 i = 0
 fig = plt.figure()
-while(n < N):
-	i = i + 1
-	n = n * 2
-	h = 1.0 / n
-	ax = fig.add_subplot(220 + i, projection='3d')
-	ax.title.set_text("N = " + str(n))
-	x = y = np.arange(0.0, 1.0 + h, h)
-	X, Y = np.meshgrid(x, y)
 
-	sinEquationDiscr = SimpleEquationDiscretizer(n, sinBorderFunction, sinValueFunction)
-	mg = MultiGrid(sinBorderFunction, sinValueFunction)
-	solMG, vErrors = mg.iterateVCycles(n, 600)
-	Z = np.reshape(solMG, (n+1, n+1))
+# while(n < N):
+# 	i = i + 1
+# 	n = n * 2
+# 	h = 1.0 / n
+# 	ax = fig.add_subplot(220 + i, projection='3d')
+# 	ax.title.set_text("N = " + str(n))
+# 	x = y = np.arange(0.0, 1.0 + h, h)
+# 	X, Y = np.meshgrid(x, y)
 
-	ax.plot_wireframe(X, Y, Z)
+# 	sinEquationDiscr = SimpleEquationDiscretizer(n, sinBorderFunction, sinValueFunction)
+# 	mg = MultiGrid(sinBorderFunction, sinValueFunction)
+# 	solMG, vErrors = mg.iterateVCycles(n, 1)
+# 	Z = np.reshape(solMG, (n+1, n+1))
 
-	ax.set_xlabel('X Label')
-	ax.set_ylabel('Y Label')
-	ax.set_zlabel('Z Label')
-	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
+# 	ax.plot_wireframe(X, Y, Z)
+
+# 	ax.set_xlabel('X Label')
+# 	ax.set_ylabel('Y Label')
+# 	ax.set_zlabel('Z Label')
+# 	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
+
 	# solMG = mg.vcycle(N, sinEquationDiscr.valueVector2D)
 	# print(solMG)
 	# print('last error:', math.exp(vErrors[len(vErrors) - 1]))
 	# plt.plot(vErrors, label = str(n))
 	# plt.legend(loc='upper right')
 
-# while(n < N):
-# 	n = n * 2
-# 	eqDiscr = SimpleEquationDiscretizer(n, borderFunction1, valueFunction1)
-# 	mg = MultiGrid(borderFunction1, valueFunction1)
-# 	solMG, vErrors = mg.iterateVCycles(n, eqDiscr.valueVector2D, 600)
-# 	# solMG = mg.vcycle(N, sinEquationDiscr.valueVector2D)
-# 	# print(solMG)
-# 	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
-# 	# plt.plot(vErrors, label = str(n))
-# 	# plt.legend(loc='upper right')
-# 	print(vErrors)
+
+while(n < N):
+	n = n * 2
+	eqDiscr = SimpleEquationDiscretizer(n, borderFunction1, valueFunction1)
+	mg = MultiGrid(borderFunction1, valueFunction1)
+	solMG, vErrors = mg.iterateVCycles(n, 600)
+	# solMG = mg.vcycle(N, sinEquationDiscr.valueVector2D)
+	# print(solMG)
+	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
+	plt.plot(vErrors, label = str(n))
+	plt.legend(loc='upper right')
+	print(vErrors)
 
 plt.show()
+
+
+
+
 # # TODO: Define restrict to maxe the grid 2x coarser for height and width
 # rCoarse = restrict(rFine)
 # sinEquationDiscrCoarse = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
