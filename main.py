@@ -28,7 +28,7 @@ import math
 # by different methods
 # The scope is to get a fast solver for a class of differential equations
 
-globalIterationConstant = 100
+globalIterationConstant = 800
 COMPLETE_MATRIX = 'COMPLETE_MATRIX'
 LOWER_MATRIX = 'LOWER_MATRIX'
 STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
@@ -433,8 +433,10 @@ errorDataConjugateGradients2 = []
 # 	(solHeat, errHeat, errorDataHeatConjugateGradients) = ConjugateGradientsHS(M, valueVector)
 # 	print(errHeat)
 
-# (solution, error) = JacobiIterate(D, R, M, valueVector2D)
-(solution2, error2) = GaussSeidelIterate(L, U, M, valueVector2D)
+(solution, error) = JacobiIterate(D, R, M, valueVector2D)
+# (solution2, error2) = GaussSeidelIterate(L, U, M, valueVector2D)
+print("Last error after ", globalIterationConstant," iterations: ")
+print(errorDataJacobi[len(errorDataJacobi) - 1])
 # (solution3, error3) = SteepestDescent(M, valueVector2D)
 # for i in range(N + 1):
 # 	for j in range(N + 1):
@@ -443,15 +445,15 @@ errorDataConjugateGradients2 = []
 # (solution5, error5, errorDataConjugateGradients2) = ConjugateGradientsHS2(M, valueVector2D)
 # (solution6, error6, errorDataConjugateGradients3) = ConjugateGradients_Golub(M, valueVector2D)
 
-# plt.plot(errorDataJacobi, label = 'Jacobi')
+plt.plot(errorDataJacobi, label = 'Jacobi')
 # plt.plot(errorDataGaussSeidel, label = 'Gauss-Seidel')
 # plt.plot(errorDataSteepestDescent, label = 'Steepest Descent')
 # plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients - x error')
 # plt.plot(errorDataConjugateGradients2, label = 'Conjugate Gradients - Ax error')
 # plt.plot(errorDataConjugateGradients3, label = 'Conjugate Gradients 3')
 
-# plt.legend(loc='upper right')
-# plt.show()
+plt.legend(loc='upper right')
+plt.show()
 # Next lines are for debugging purpose
 
 # print('Solution of Jacobi Iteration:')
