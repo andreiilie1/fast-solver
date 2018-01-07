@@ -28,7 +28,7 @@ import math
 # by different methods
 # The scope is to get a fast solver for a class of differential equations
 
-globalIterationConstant = 800
+globalIterationConstant = 20
 COMPLETE_MATRIX = 'COMPLETE_MATRIX'
 LOWER_MATRIX = 'LOWER_MATRIX'
 STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
@@ -97,13 +97,13 @@ def JacobiIterate(D, R, M, b):
     for i in range(iterationConstant):
         err = np.subtract(M.dot(x), b)
         absErr = math.sqrt(err.dot(err))
-        errorDataJacobi.append(absErr)
+        errorDataJacobi.append(math.log(absErr))
         y = R.dot(x)
         r = np.subtract(b, y)
         x = [r_i / d_i for r_i, d_i in zip(r, d)]
     err = np.subtract(M.dot(x), b)
     absErr = math.sqrt(err.dot(err))
-    errorDataJacobi.append(absErr)
+    errorDataJacobi.append(math.log(absErr))
     return x, absErr
 
 
@@ -118,7 +118,7 @@ def GaussSeidelIterate(L, U, M, b):
     for i in range(iterationConstant):
         err = np.subtract(M.dot(x), b)
         absErr = math.sqrt(err.dot(err))
-        errorDataGaussSeidel.append(absErr)
+        errorDataGaussSeidel.append(math.log(absErr))
         xNew = np.zeros_like(x)
         for j in range(L.shape[0]):
             currentLowerRow = L.getrow(j)
@@ -128,9 +128,55 @@ def GaussSeidelIterate(L, U, M, b):
         x = xNew
     err = np.subtract(M.dot(x), b)
     absErr = math.sqrt(err.dot(err))
-    errorDataGaussSeidel.append(absErr)
+    errorDataGaussSeidel.append(math.log(absErr))
     return x, absErr
 
+
+def SSORIterate(L, U, M, b):
+	omega = 1.0
+	errorDataSSOR = []
+	x = []
+	d = L.diagonal()
+	iterationConstant = globalIterationConstant
+
+	x = np.zeros_like(b)
+
+
+	for k in range(iterationConstant):
+
+		print(k)
+		err = np.subtract(M.dot(x), b)
+		absErr = math.sqrt(err.dot(err))
+		errorDataSSOR.append(math.log(absErr))
+
+		xNew = np.zeros_like(x)
+
+		for i in range(L.shape[0]):
+			currentLowerRow = L.getrow(i)
+			currentUpperRow = U.getrow(i)
+
+			currSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x)
+			currSum = (b[i] - currSum) / d[i]
+			xNew[i] = x[i] + omega * (currSum - x[i])
+
+		x = xNew
+		xNew = np.zeros_like(x)
+
+		for i in reversed(range(L.shape[0])):
+			currSum = 0
+			currentLowerRow = L.getrow(i)
+			currentUpperRow = U.getrow(i)
+
+			currSum = currentLowerRow.dot(x) + currentUpperRow.dot(xNew) - d[i] * x[i]
+			currSum = (b[i] - currSum) / d[i]
+			xNew[i] = x[i] + omega * (currSum - x[i])
+
+		x = xNew
+
+	err = np.subtract(b, M.dot(x))
+	absErr = math.sqrt(err.dot(err))
+	errorDataSSOR.append(math.log(absErr))
+	return x, absErr, errorDataSSOR, err
 
 
 def SteepestDescent(M, b):
@@ -434,9 +480,9 @@ errorDataConjugateGradients2 = []
 # 	print(errHeat)
 
 (solution, error) = JacobiIterate(D, R, M, valueVector2D)
-# (solution2, error2) = GaussSeidelIterate(L, U, M, valueVector2D)
-print("Last error after ", globalIterationConstant," iterations: ")
-print(errorDataJacobi[len(errorDataJacobi) - 1])
+(solution2, error2, errorDataSSOR, _) = SSORIterate(L, U, M, valueVector2D)
+(solution3, error3) = GaussSeidelIterate(L,U,M,valueVector2D)
+
 # (solution3, error3) = SteepestDescent(M, valueVector2D)
 # for i in range(N + 1):
 # 	for j in range(N + 1):
@@ -446,7 +492,8 @@ print(errorDataJacobi[len(errorDataJacobi) - 1])
 # (solution6, error6, errorDataConjugateGradients3) = ConjugateGradients_Golub(M, valueVector2D)
 
 plt.plot(errorDataJacobi, label = 'Jacobi')
-# plt.plot(errorDataGaussSeidel, label = 'Gauss-Seidel')
+plt.plot(errorDataSSOR, label = 'SSOR')
+plt.plot(errorDataGaussSeidel, label = 'Gauss-Seidel')
 # plt.plot(errorDataSteepestDescent, label = 'Steepest Descent')
 # plt.plot(errorDataConjugateGradients, label = 'Conjugate Gradients - x error')
 # plt.plot(errorDataConjugateGradients2, label = 'Conjugate Gradients - Ax error')

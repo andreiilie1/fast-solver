@@ -103,7 +103,7 @@ class MultiGrid:
 			return v
 
 		solver1 = SolverMethods(self.niu1, discr, f, initSol)
-		v, _, _, _ = solver1.JacobiIterate()
+		v, _, _, _ = solver1.SSORIterate()
 
 		assert(N % 2 == 0)
 		coarseN = N  / 2
@@ -117,7 +117,7 @@ class MultiGrid:
 		v = np.add(v, fineV)
 
 		solver2 = SolverMethods(self.niu2, discr, f, v)
-		v2, _, _, _ = solver2.JacobiIterate()
+		v2, _, _, _ = solver2.SSORIterate()
 		return v2
 
 	def iterateVCycles(self, N, t):
@@ -142,7 +142,7 @@ class MultiGrid:
 
 class MultiGridAsPreconditioner:
 
-	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 3, niu2 = 3):
+	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 2, niu2 = 2):
 		self.borderFunction = borderFunction
 		self.valueFunction = valueFunction
 		self.niu1 = niu1
@@ -229,7 +229,7 @@ class MultiGridAsPreconditioner:
 			return v
 
 		solver1 = SolverMethods(self.niu1, discr, f, initSol)
-		v, _, _, _ = solver1.JacobiIterate()
+		v, _, _, _ = solver1.SSORIterate()
 
 		assert(N % 2 == 0)
 		coarseN = N  / 2
@@ -243,7 +243,7 @@ class MultiGridAsPreconditioner:
 		v = np.add(v, fineV)
 
 		solver2 = SolverMethods(self.niu2, discr, f, v)
-		v2, _, _, _ = solver2.JacobiIterate()
+		v2, _, _, _ = solver2.SSORIterate()
 		return v2
 
 	def iterateVCycles(self, N, t):
@@ -375,6 +375,70 @@ def MultiGridPrecondCG(borderFunction, valueFunction, N):
 
 	return x, absErr, errorDataMGCG
 
+
+
+def JacobiPrecondCG(borderFunction, valueFunction, N):
+	avoidDivByZeroError = 0.000000000000000000001
+	errorDataMGCG = []
+
+	mg = SimpleEquationDiscretizer(N, borderFunction, valueFunction)
+	solver = SolverMethods(5, mg)
+	f = mg.valueVector2D
+	M = mg.M
+
+	x = np.zeros_like(f, dtype = np.float)
+	r = np.subtract(f, M.dot(x))
+
+	solver.b = r
+	rTilda, _ , _, _= solver.JacobiIterate(0.2)
+	rTilda = np.array(rTilda)
+
+	p = np.copy(rTilda)
+
+	convergence = False
+
+	while(not convergence):
+		solutionError = np.subtract(M.dot(x), f)
+		absErr = 1.0 * np.linalg.norm(solutionError) / np.linalg.norm(f)
+		errorDataMGCG.append(math.log(absErr))
+		print(absErr)
+
+		if(absErr < tol):
+			convergence = True
+			break
+
+		alpha_numerator = rTilda.dot(r)
+		alpha_denominator = p.dot(M.dot(p))
+
+		if(alpha_denominator < avoidDivByZeroError):
+			convergence = True
+			break
+
+		alpha = 1.0 * alpha_numerator / alpha_denominator
+
+		x = np.add(x, np.multiply(p, alpha))
+
+		newR = np.subtract(r, np.multiply(M.dot(p), alpha))
+
+		solver.b = newR
+		newR_tilda, _, _, _ = solver.JacobiIterate(0.2)
+		newR_tilda = np.array(newR_tilda)
+
+		beta_numerator = newR_tilda.dot(newR)
+		beta_denominator = rTilda.dot(r)
+
+		if(beta_denominator < avoidDivByZeroError):
+			convergence = True
+			break
+
+		beta = 1.0 * beta_numerator / beta_denominator
+		p = newR_tilda + np.multiply(p, beta)
+
+		r = newR
+		rTilda = newR_tilda
+
+	return x, absErr, errorDataMGCG
+
 class SolverMethods:
 	# Iterative methods for solving a linear system
 
@@ -391,25 +455,30 @@ class SolverMethods:
 			self.b = b
 		self.initSol = initSol
 
-
-	def JacobiIterate(self):
+	def JacobiIterate(self, dampFactor = 0):
 	    errorDataJacobi = []
 	    x = []
 	    d = self.D.diagonal()
 	    iterationConstant = self.iterationConstant
+
 	    # Initial guess is x = (0,0,...0) if not provided as a parameter
 	    if(self.initSol == []):
 	    	x = np.zeros_like(self.b)
 	    else:
 	    	x = self.initSol
+
 	    # Iterate constant number of times (TODO: iterate while big error Mx-b)
 	    for i in range(iterationConstant):
 	        err = np.subtract(self.M.dot(x), self.b)
 	        absErr = math.sqrt(err.dot(err))
 	        errorDataJacobi.append(absErr)
+
 	        y = self.R.dot(x)
 	        r = np.subtract(self.b, y)
+	        xPrev = np.copy(x)
 	        x = [r_i / d_i for r_i, d_i in zip(r, d)]
+	        x = np.add(np.multiply(xPrev, dampFactor), np.multiply(x, (1-dampFactor)))
+	    
 	    err = np.subtract(self.b, self.M.dot(x))
 	    absErr = math.sqrt(err.dot(err))
 	    errorDataJacobi.append(absErr)
@@ -434,8 +503,9 @@ class SolverMethods:
 	        xNew = np.zeros_like(x)
 	        for j in range(self.L.shape[0]):
 	            currentLowerRow = self.L.getrow(j)
-	            currentUperRow = self.U.getrow(j)
-	            rowSum = currentLowerRow.dot(xNew) + currentUperRow.dot(x)
+	            currentUpperRow = self.U.getrow(j)
+
+	            rowSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x)
 	            xNew[j] = 1.0 * (self.b[j] - rowSum) / d[j]
 
 	        # if np.allclose(x, xNew, rtol=1e-6):
@@ -447,6 +517,55 @@ class SolverMethods:
 	    absErr = math.sqrt(err.dot(err))
 	    errorDataGaussSeidel.append(absErr)
 	    return x, absErr, errorDataGaussSeidel, err
+
+	def SSORIterate(self, omega = 1.0):
+		errorDataSSOR = []
+		x = []
+		d = self.D.diagonal()
+		iterationConstant = self.iterationConstant
+
+		if(self.initSol == []):
+			x = np.zeros_like(self.b)
+		else:
+			x = self.initSol
+
+		for k in range(iterationConstant):
+
+			err = np.subtract(self.M.dot(x), self.b)
+			absErr = math.sqrt(err.dot(err))
+			errorDataSSOR.append(absErr)
+
+			xNew = np.zeros_like(x)
+
+			for i in range(self.L.shape[0]):
+				currentLowerRow = self.L.getrow(i)
+				currentUpperRow = self.U.getrow(i)
+
+				currSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x)
+				currSum = 1.0 * (self.b[i] - currSum) / d[i]
+				xNew[i] = x[i] + omega * (currSum - x[i])
+
+			x = xNew
+			xNew = np.zeros_like(x)
+
+			for i in reversed(range(self.L.shape[0])):
+				currSum = 0
+				currentLowerRow = self.L.getrow(i)
+				currentUpperRow = self.U.getrow(i)
+
+				currSum = currentLowerRow.dot(x) + currentUpperRow.dot(xNew) - d[i] * x[i]
+				currSum = 1.0 * (self.b[i] - currSum) / d[i]
+				xNew[i] = x[i] + omega * (currSum - x[i])
+
+			x = xNew
+
+		err = np.subtract(self.b, self.M.dot(x))
+		absErr = math.sqrt(err.dot(err))
+		errorDataSSOR.append(absErr)
+		return x, absErr, errorDataSSOR, err
+
+
+
 
 
 class SimpleEquationDiscretizer:
@@ -586,13 +705,15 @@ def sinValueFunction(x, y):
     value = - 2.0 * math.sin(x) * math.sin(y)
     return value
 
+
 def borderFunction1(x, y):
-	value = 1.0 * x * y * (x + y)
+	value = 1.0 * (x * x * x + y * y * y + x + y + 1.0)
 	return value
 
-def valueFunction1(x, y):
-	value = 2.0 * x + 2.0 * y
+def laplaceValueFunction1(x, y):
+	value = 6.0 * x + 6.0 * y
 	return value
+
 
 
 
@@ -600,16 +721,16 @@ def valueFunction1(x, y):
 
 # sinEquationDiscr = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
 
-# for N in [4,8,16,32]:
-# 	xSolPrecond, errPrecond, errDataPrecond = MultiGridPrecondCG(sinBorderFunction, sinValueFunction, N)
-# 	plt.plot(errDataPrecond, label=str(N))
+for N in [4,8,16,32,64,128]:
+	xSolPrecond, errPrecond, errDataPrecond = MultiGridPrecondCG(sinBorderFunction, sinValueFunction, N)
+	plt.plot(errDataPrecond, label=str(N))
 
 
 # xSol, err, errData = ConjugateGradientsHS(sinBorderFunction, sinValueFunction, N)
 # plt.plot(errData, label="Simple CG")
 
-# plt.legend(loc='upper right')
-# plt.show()
+plt.legend(loc='upper right')
+plt.show()
 
 
 # h = 1.0 / N
@@ -629,10 +750,10 @@ def valueFunction1(x, y):
 # (xFine, absErr, errorDataJacobi, rFine) = solver.JacobiIterate()
 
 # print(errorDataJacobi)
-N = 32
-n = 4
-i = 0
-fig = plt.figure()
+# N = 64
+# n = 2
+# i = 0
+# fig = plt.figure()
 
 # while(n < N):
 # 	i = i + 1
@@ -662,19 +783,19 @@ fig = plt.figure()
 	# plt.legend(loc='upper right')
 
 
-while(n < N):
-	n = n * 2
-	# eqDiscr = SimpleEquationDiscretizer(n, borderFunction1, valueFunction1)
-	mg = MultiGrid(sinBorderFunction, sinValueFunction )
-	solMG, vErrors = mg.iterateVCycles(n, 600)
-	# solMG = mg.vcycle(N, sinEquationDiscr.valueVector2D)
-	# print(solMG)
-	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
-	plt.plot(vErrors, label = str(n))
-	plt.legend(loc='upper right')
-	print(vErrors)
+# while(n < N):
+# 	n = n * 2
+# 	# eqDiscr = SimpleEquationDiscretizer(n, borderFunction1, valueFunction1)
+# 	mg = MultiGrid(sinBorderFunction, sinValueFunction )
+# 	solMG, vErrors = mg.iterateVCycles(n, 600)
+# 	# solMG = mg.vcycle(N, sinEquationDiscr.valueVector2D)
+# 	# print(solMG)
+# 	print('last error:', math.exp(vErrors[len(vErrors) - 1]))
+# 	plt.plot(vErrors, label = str(n))
+# 	plt.legend(loc='upper right')
+# 	print(vErrors)
 
-plt.show()
+# plt.show()
 
 
 
