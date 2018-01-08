@@ -3,6 +3,8 @@ from scipy.sparse import *
 from scipy import *
 import math
 
+tol = 0.00001
+
 class SolverMethods:
 	# Iterative methods for solving a linear system
 
@@ -128,4 +130,44 @@ class SolverMethods:
 		errorDataSSOR.append(absErr)
 		return x, absErr, errorDataSSOR, err
 
+	def ConjugateGradientsHS(self):
+		M = self.M
+		b = self.b
 
+		avoidDivByZeroError = 0.0000000001
+		errorDataConjugateGradients = []
+		x = np.zeros_like(b, dtype=np.float)
+		r = np.subtract(b, M.dot(x))
+		d = np.subtract(b, M.dot(x))
+		convergence = False
+
+		while(not convergence):
+			solutionError = np.subtract(M.dot(x), b)
+			absErr = np.linalg.norm(solutionError)
+			errorDataConjugateGradients.append(math.log(absErr))
+			if(absErr < tol):
+				convergence = True
+				break
+
+			alpha_numerator = r.dot(r)
+			alpha_denominator = d.dot(M.dot(d))
+			if(alpha_denominator < avoidDivByZeroError):
+				convergence = True
+				break
+			alpha = 1.0 * alpha_numerator / alpha_denominator
+
+			x = np.add(x, np.multiply(d, alpha))
+			r_new = np.subtract(r, np.multiply(M.dot(d), alpha))
+
+			beta_numerator = r_new.dot(r_new)
+			beta_denominator = r.dot(r)
+			if(beta_denominator < avoidDivByZeroError):
+				convergence = True
+				break
+
+			beta = 1.0 * beta_numerator / beta_denominator
+
+			d = r_new + np.multiply(d, beta)
+			r = r_new
+
+		return x, absErr, errorDataConjugateGradients

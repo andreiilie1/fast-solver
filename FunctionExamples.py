@@ -30,11 +30,11 @@ def laplaceValueFunction1(x, y):
 # Function examples for a time equation discretizer (heat equation)
 
 def heatSinBorderFunction(x, y, t):
-	value = 1.0 * math.sin(x) * math.sin(y)
+	value = 1.0 * math.sin(x) * math.sin(y) + t
 	return value
 
 def heatRhsFunction(x, y, t):
-	value = -2.0 * math.sin(x) * math.sin(y)
+	value = -2.0 * math.sin(x) * math.sin(y) + 1
 	return value
 
 def heatInitialFunction(x, y, t):

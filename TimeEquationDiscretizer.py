@@ -51,7 +51,8 @@ class TimeEquationDiscretizer:
 		# Lower and strictly upper matrices L, U with L + U = M
 		self.L = csr_matrix((np.array(self.dataListLower), (np.array(self.rowListLower), np.array(self.colListLower))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
 		self.U = csr_matrix((np.array(self.dataListUpper), (np.array(self.rowListUpper), np.array(self.colListUpper))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
-	
+		
+		print(self.M.todense())
 	# Helper functions for creating the complete, lower, upper and diagonal matrices
 	def addEntry(self, type, row, column, value):
 		if(type == COMPLETE_MATRIX):
@@ -91,7 +92,7 @@ class TimeEquationDiscretizer:
 	# Check if a(i,j) is on border
 	def isOnBorder(self, i, j):
 		# print(i, j)
-		if(i == 0 or j == 0 or i == (self.N + 1) or j == (self.N + 1)):
+		if(i == 0 or j == 0 or i == (self.N) or j == (self.N)):
 			return True
 		else:
 			return False
@@ -144,14 +145,14 @@ class TimeEquationDiscretizer:
 			(x, y) = self.getCoordinates(currentIndex)
 
 			if(self.isOnBorder(x, y)):
-				value = self.borderTimeFunction(x / (self.N + 1), y / (self.N + 1), k * self.dT)
+				value = self.borderTimeFunction((1.0) * x / (self.N + 1), (1.0) * y / (self.N + 1), (1.0) * k * self.dT)
 			else:
-				value = 1.0* (self.h * self.h) * self.rhsHeatEquationFunction(x / (self.N + 1), y / (self.N + 1), k * self.dT)
-				value = value + (self.h * self.h) / self.dT * prevSol[self.getRow(x, y)]
+				value = 1.0* (self.h * self.h) * self.rhsHeatEquationFunction((1.0) * x / (self.N + 1), (1.0) * y / (self.N + 1), (1.0) * k * self.dT)
+				value = value + 1.0 * (self.h * self.h) / self.dT * prevSol[self.getRow(x, y)]
 
 				for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
 				 	if((self.isOnBorder(x + dX, y + dY))):
-						localValue = self.borderTimeFunction((x + dX) / (self.N + 1), (y + dY) / (self.N + 1), k * self.dT)
+						localValue = self.borderTimeFunction((1.0) * (x + dX) / (self.N + 1), (1.0) * (y + dY) / (self.N + 1), k * self.dT)
 						value += localValue
 
 			valueVector.append(value)
@@ -165,7 +166,7 @@ class TimeEquationDiscretizer:
 		if(self.isOnBorder(x, y)):
 			self.addEntryToMatrices(row, row, 1)
 		else:
-			self.addEntryToMatrices(row, row, 4 + (self.h * self.h) / self.dT)
+			self.addEntryToMatrices(row, row, 4 + (1.0) * (self.h * self.h) / self.dT)
 
 			for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
 				if(not(self.isOnBorder(x + dX, y + dY))):

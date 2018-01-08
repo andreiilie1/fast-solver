@@ -270,49 +270,6 @@ class MultiGridAsPreconditioner:
 		return currSol, vErrors
 
 
-def ConjugateGradientsHS(borderFunction, valueFunction, N):
-	discr = sed.SimpleEquationDiscretizer(N, borderFunction, valueFunction)
-	M = discr.M
-	b = discr.valueVector2D
-
-	avoidDivByZeroError = 0.0000000001
-	errorDataConjugateGradients = []
-	x = np.zeros_like(b, dtype=np.float)
-	r = np.subtract(b, M.dot(x))
-	d = np.subtract(b, M.dot(x))
-	convergence = False
-
-	while(not convergence):
-		solutionError = np.subtract(M.dot(x), b)
-		absErr = np.linalg.norm(solutionError)
-		errorDataConjugateGradients.append(math.log(absErr))
-		if(absErr < tol):
-			convergence = True
-			break
-
-		alpha_numerator = r.dot(r)
-		alpha_denominator = d.dot(M.dot(d))
-		if(alpha_denominator < avoidDivByZeroError):
-			convergence = True
-			break
-		alpha = 1.0 * alpha_numerator / alpha_denominator
-
-		x = np.add(x, np.multiply(d, alpha))
-		r_new = np.subtract(r, np.multiply(M.dot(d), alpha))
-
-		beta_numerator = r_new.dot(r_new)
-		beta_denominator = r.dot(r)
-		if(beta_denominator < avoidDivByZeroError):
-			convergence = True
-			break
-
-		beta = 1.0 * beta_numerator / beta_denominator
-
-		d = r_new + np.multiply(d, beta)
-		r = r_new
-
-	return x, absErr, errorDataConjugateGradients
-
 def MultiGridPrecondCG(borderFunction, valueFunction, N):
 	avoidDivByZeroError = 0.000000000000000000001
 	errorDataMGCG = []
@@ -443,14 +400,14 @@ def JacobiPrecondCG(borderFunction, valueFunction, N):
 def solveHeatEquationForAllTimeSteps(discr):
 	solHeat = discr.initialHeatTimeSolution()
 	valueVector = discr.computeVectorAtTimestep(1, solHeat)
-	solver = sm.SolverMethods(50, discr, valueVector)
-	sol =[]
+	solver = sm.SolverMethods(1000, discr, valueVector)
+	sol =[solHeat]
 
 	for k in range(1, discr.T + 1):
 		t = k * discr.dT
 		valueVector = discr.computeVectorAtTimestep(k, solHeat)
 		solver.b = valueVector
-		(solHeat, err, _, _) = solver.JacobiIterate()
+		(solHeat, err, _) = solver.ConjugateGradientsHS()
 		sol.append(solHeat)
 		print(err)
 
@@ -458,7 +415,8 @@ def solveHeatEquationForAllTimeSteps(discr):
 
 
 
-
+#Idea : compute finer solutions as we advance in the timestep
+# i.e. 100 iterations for t=0, 120 for t = 1, 140 for t = 2, etc.
 
 
 
@@ -471,9 +429,9 @@ def solveHeatEquationForAllTimeSteps(discr):
 # N = int(input("Enter inverse of coordinates sample rate for the coarser grid\n"))
 
 # sinEquationDiscr = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
-discrTest = ted.TimeEquationDiscretizer(8,8,fe.heatSinBorderFunction, fe.heatRhsFunction, fe.heatInitialFunction)
-solveHeatEquationForAllTimeSteps(discrTest)
-
+discrTest = ted.TimeEquationDiscretizer(32,32,fe.heatSinBorderFunction, fe.heatRhsFunction, fe.heatInitialFunction)
+sol = solveHeatEquationForAllTimeSteps(discrTest)
+xSol = sol[16]
 for N in []:
 	xSolPrecond, errPrecond, errDataPrecond = MultiGridPrecondCG(fe.sinBorderFunction, fe.sinValueFunction, N)
 	plt.plot(errDataPrecond, label=str(N))
@@ -484,19 +442,19 @@ for N in []:
 
 # plt.legend(loc='upper right')
 # plt.show()
+N = 32
+h = 1.0 / N
+fig = plt.figure()
+ax = fig.add_subplot(111, projection = '3d')
+x = y = np.arange(0.0, 1.0 + h, h)
+X, Y = np.meshgrid(x, y)
 
-# h = 1.0 / N
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection = '3d')
-# x = y = np.arange(0.0, 1.0 + h, h)
-# X, Y = np.meshgrid(x, y)
-
-# Z = np.reshape(xSol, (N+1, N+1))
-# ax.plot_wireframe(X, Y, Z)
-# ax.set_xlabel('X Label')
-# ax.set_ylabel('Y Label')
-# ax.set_zlabel('Z Label')
-
+Z = np.reshape(xSol, (N+1, N+1))
+ax.plot_wireframe(X, Y, Z)
+ax.set_xlabel('X Label')
+ax.set_ylabel('Y Label')
+ax.set_zlabel('Z Label')
+plt.show()
 
 # solver = sm.SolverMethods(100, sinEquationDiscr)
 # (xFine, absErr, errorDataJacobi, rFine) = solver.JacobiIterate()
