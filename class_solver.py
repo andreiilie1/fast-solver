@@ -8,6 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import SimpleEquationDiscretizer as sed
 import SolverMethods as sm
 import FunctionExamples as fe
+import TimeEquationDiscretizer as ted
 
 tol = 0.000001
 
@@ -21,10 +22,10 @@ class MultiGrid:
 
 
 	def getCoordinates(self, row, N):
-	    return int(row / (N + 1)), row % (N + 1)
+		return int(row / (N + 1)), row % (N + 1)
 
 	def getRow(self, i, j, N):
-	    return(i * (N + 1) + j)
+		return(i * (N + 1) + j)
 
 
 	def restrict(self, r, fineN, coarseN):
@@ -158,10 +159,10 @@ class MultiGridAsPreconditioner:
 
 
 	def getCoordinates(self, row, N):
-	    return int(row / (N + 1)), row % (N + 1)
+		return int(row / (N + 1)), row % (N + 1)
 
 	def getRow(self, i, j, N):
-	    return(i * (N + 1) + j)
+		return(i * (N + 1) + j)
 
 
 	def interpolate(self, r, fineN, coarseN):
@@ -439,11 +440,41 @@ def JacobiPrecondCG(borderFunction, valueFunction, N):
 
 
 
+def solveHeatEquationForAllTimeSteps(discr):
+	solHeat = discr.initialHeatTimeSolution()
+	valueVector = discr.computeVectorAtTimestep(1, solHeat)
+	solver = sm.SolverMethods(50, discr, valueVector)
+	sol =[]
+
+	for k in range(1, discr.T + 1):
+		t = k * discr.dT
+		valueVector = discr.computeVectorAtTimestep(k, solHeat)
+		solver.b = valueVector
+		(solHeat, err, _, _) = solver.JacobiIterate()
+		sol.append(solHeat)
+		print(err)
+
+	return sol
+
+
+
+
+
+
+
+
+
+
+
+
+
 # N = int(input("Enter inverse of coordinates sample rate for the coarser grid\n"))
 
 # sinEquationDiscr = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
+discrTest = ted.TimeEquationDiscretizer(8,8,fe.heatSinBorderFunction, fe.heatRhsFunction, fe.heatInitialFunction)
+solveHeatEquationForAllTimeSteps(discrTest)
 
-for N in [4,8,16,32]:
+for N in []:
 	xSolPrecond, errPrecond, errDataPrecond = MultiGridPrecondCG(fe.sinBorderFunction, fe.sinValueFunction, N)
 	plt.plot(errDataPrecond, label=str(N))
 
@@ -451,9 +482,8 @@ for N in [4,8,16,32]:
 # xSol, err, errData = ConjugateGradientsHS(sinBorderFunction, sinValueFunction, N)
 # plt.plot(errData, label="Simple CG")
 
-plt.legend(loc='upper right')
-plt.show()
-
+# plt.legend(loc='upper right')
+# plt.show()
 
 # h = 1.0 / N
 # fig = plt.figure()
