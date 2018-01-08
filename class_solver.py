@@ -5,11 +5,9 @@ import numpy.linalg as la
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-COMPLETE_MATRIX = 'COMPLETE_MATRIX'
-LOWER_MATRIX = 'LOWER_MATRIX'
-STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
-DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
-REMAINDER_MATRIX = 'REMAINDER_MATRIX'
+import SimpleEquationDiscretizer as sed
+import SolverMethods as sm
+import FunctionExamples as fe
 
 tol = 0.000001
 
@@ -95,14 +93,14 @@ class MultiGrid:
 
 
 	def vcycle(self, N, f, initSol = []):
-		discr = SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
+		discr = sed.SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
 
 		fSize = len(f)
 		if(fSize < 20):
 			v = la.solve(discr.M.todense(), f)
 			return v
 
-		solver1 = SolverMethods(self.niu1, discr, f, initSol)
+		solver1 = sm.SolverMethods(self.niu1, discr, f, initSol)
 		v, _, _, _ = solver1.SSORIterate()
 
 		assert(N % 2 == 0)
@@ -116,14 +114,14 @@ class MultiGrid:
 		fineV = self.interpolate(coarseV, N, coarseN)
 		v = np.add(v, fineV)
 
-		solver2 = SolverMethods(self.niu2, discr, f, v)
+		solver2 = sm.SolverMethods(self.niu2, discr, f, v)
 		v2, _, _, _ = solver2.SSORIterate()
 		return v2
 
 	def iterateVCycles(self, N, t):
 		initSol = []
 		vErrors = []
-		discr = SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
+		discr = sed.SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
 		f = discr.valueVector2D
 
 		for i in range(t):
@@ -142,7 +140,7 @@ class MultiGrid:
 
 class MultiGridAsPreconditioner:
 
-	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 2, niu2 = 2):
+	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 3, niu2 = 3):
 		self.borderFunction = borderFunction
 		self.valueFunction = valueFunction
 		self.niu1 = niu1
@@ -154,7 +152,7 @@ class MultiGridAsPreconditioner:
 		i = 0
 		while(maxN >= 2):
 			assert(maxN % 2 == 0)
-			self.discrLevel.append(SimpleEquationDiscretizer(maxN, self.borderFunction, self.valueFunction))
+			self.discrLevel.append(sed.SimpleEquationDiscretizer(maxN, self.borderFunction, self.valueFunction))
 			i += 1
 			maxN /= 2
 
@@ -228,7 +226,7 @@ class MultiGridAsPreconditioner:
 			v = la.solve(discr.M.todense(), f)
 			return v
 
-		solver1 = SolverMethods(self.niu1, discr, f, initSol)
+		solver1 = sm.SolverMethods(self.niu1, discr, f, initSol)
 		v, _, _, _ = solver1.SSORIterate()
 
 		assert(N % 2 == 0)
@@ -242,14 +240,14 @@ class MultiGridAsPreconditioner:
 		fineV = self.interpolate(coarseV, N, coarseN)
 		v = np.add(v, fineV)
 
-		solver2 = SolverMethods(self.niu2, discr, f, v)
+		solver2 = sm.SolverMethods(self.niu2, discr, f, v)
 		v2, _, _, _ = solver2.SSORIterate()
 		return v2
 
 	def iterateVCycles(self, N, t):
 		initSol = []
 		vErrors = []
-		discr = SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
+		discr = sed.SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
 
 		if(self.bVector == []):
 			f = discr.valueVector2D
@@ -272,7 +270,7 @@ class MultiGridAsPreconditioner:
 
 
 def ConjugateGradientsHS(borderFunction, valueFunction, N):
-	discr = SimpleEquationDiscretizer(N, borderFunction, valueFunction)
+	discr = sed.SimpleEquationDiscretizer(N, borderFunction, valueFunction)
 	M = discr.M
 	b = discr.valueVector2D
 
@@ -326,7 +324,7 @@ def MultiGridPrecondCG(borderFunction, valueFunction, N):
 	r = np.subtract(f, M.dot(x))
 
 	mg.bVector = r
-	rTilda, _ = mg.iterateVCycles(N, 1)
+	rTilda, _ = mg.iterateVCycles(N, 2)
 	rTilda = np.array(rTilda)
 
 	p = np.copy(rTilda)
@@ -357,7 +355,7 @@ def MultiGridPrecondCG(borderFunction, valueFunction, N):
 		newR = np.subtract(r, np.multiply(M.dot(p), alpha))
 
 		mg.bVector = newR
-		newR_tilda, _ = mg.iterateVCycles(N, 1)
+		newR_tilda, _ = mg.iterateVCycles(N, 2)
 		newR_tilda = np.array(newR_tilda)
 
 		beta_numerator = newR_tilda.dot(newR)
@@ -381,8 +379,8 @@ def JacobiPrecondCG(borderFunction, valueFunction, N):
 	avoidDivByZeroError = 0.000000000000000000001
 	errorDataMGCG = []
 
-	mg = SimpleEquationDiscretizer(N, borderFunction, valueFunction)
-	solver = SolverMethods(5, mg)
+	mg = sed.SimpleEquationDiscretizer(N, borderFunction, valueFunction)
+	solver = sm.SolverMethods(5, mg)
 	f = mg.valueVector2D
 	M = mg.M
 
@@ -439,290 +437,14 @@ def JacobiPrecondCG(borderFunction, valueFunction, N):
 
 	return x, absErr, errorDataMGCG
 
-class SolverMethods:
-	# Iterative methods for solving a linear system
-
-	def __init__(self, iterationConstant, eqDiscretizer, b = [], initSol = []):
-		self.iterationConstant = iterationConstant
-		self.M = eqDiscretizer.M
-		self.D = eqDiscretizer.D
-		self.R = eqDiscretizer.R
-		self.L = eqDiscretizer.L
-		self.U = eqDiscretizer.U
-		if(b == []) :
-			self.b = eqDiscretizer.valueVector2D
-		else:
-			self.b = b
-		self.initSol = initSol
-
-	def JacobiIterate(self, dampFactor = 0):
-	    errorDataJacobi = []
-	    x = []
-	    d = self.D.diagonal()
-	    iterationConstant = self.iterationConstant
-
-	    # Initial guess is x = (0,0,...0) if not provided as a parameter
-	    if(self.initSol == []):
-	    	x = np.zeros_like(self.b)
-	    else:
-	    	x = self.initSol
-
-	    # Iterate constant number of times (TODO: iterate while big error Mx-b)
-	    for i in range(iterationConstant):
-	        err = np.subtract(self.M.dot(x), self.b)
-	        absErr = math.sqrt(err.dot(err))
-	        errorDataJacobi.append(absErr)
-
-	        y = self.R.dot(x)
-	        r = np.subtract(self.b, y)
-	        xPrev = np.copy(x)
-	        x = [r_i / d_i for r_i, d_i in zip(r, d)]
-	        x = np.add(np.multiply(xPrev, dampFactor), np.multiply(x, (1-dampFactor)))
-	    
-	    err = np.subtract(self.b, self.M.dot(x))
-	    absErr = math.sqrt(err.dot(err))
-	    errorDataJacobi.append(absErr)
-	    return x, absErr, errorDataJacobi, err
-
-	def GaussSeidelIterate(self):
-	    errorDataGaussSeidel = []
-	    x = []
-	    d = self.L.diagonal()
-	    iterationConstant = self.iterationConstant
-
-	    if(self.initSol == []):
-	    	x = np.zeros_like(self.b)
-	    else:
-	    	x = self.initSol
-
-	    for i in range(iterationConstant):
-	        err = np.subtract(self.M.dot(x), self.b)
-	        absErr = math.sqrt(err.dot(err))
-	        errorDataGaussSeidel.append(absErr)
-
-	        xNew = np.zeros_like(x)
-	        for j in range(self.L.shape[0]):
-	            currentLowerRow = self.L.getrow(j)
-	            currentUpperRow = self.U.getrow(j)
-
-	            rowSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x)
-	            xNew[j] = 1.0 * (self.b[j] - rowSum) / d[j]
-
-	        # if np.allclose(x, xNew, rtol=1e-6):
-        	#     break
-
-	        x = xNew
-
-	    err = np.subtract(self.b, self.M.dot(x))
-	    absErr = math.sqrt(err.dot(err))
-	    errorDataGaussSeidel.append(absErr)
-	    return x, absErr, errorDataGaussSeidel, err
-
-	def SSORIterate(self, omega = 1.0):
-		errorDataSSOR = []
-		x = []
-		d = self.D.diagonal()
-		iterationConstant = self.iterationConstant
-
-		if(self.initSol == []):
-			x = np.zeros_like(self.b)
-		else:
-			x = self.initSol
-
-		for k in range(iterationConstant):
-
-			err = np.subtract(self.M.dot(x), self.b)
-			absErr = math.sqrt(err.dot(err))
-			errorDataSSOR.append(absErr)
-
-			xNew = np.zeros_like(x)
-
-			for i in range(self.L.shape[0]):
-				currentLowerRow = self.L.getrow(i)
-				currentUpperRow = self.U.getrow(i)
-
-				currSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x)
-				currSum = 1.0 * (self.b[i] - currSum) / d[i]
-				xNew[i] = x[i] + omega * (currSum - x[i])
-
-			x = xNew
-			xNew = np.zeros_like(x)
-
-			for i in reversed(range(self.L.shape[0])):
-				currSum = 0
-				currentLowerRow = self.L.getrow(i)
-				currentUpperRow = self.U.getrow(i)
-
-				currSum = currentLowerRow.dot(x) + currentUpperRow.dot(xNew) - d[i] * x[i]
-				currSum = 1.0 * (self.b[i] - currSum) / d[i]
-				xNew[i] = x[i] + omega * (currSum - x[i])
-
-			x = xNew
-
-		err = np.subtract(self.b, self.M.dot(x))
-		absErr = math.sqrt(err.dot(err))
-		errorDataSSOR.append(absErr)
-		return x, absErr, errorDataSSOR, err
-
-
-
-
-
-class SimpleEquationDiscretizer:
-
-	def __init__(self, N, borderFunction, valueFunction):
-		self.N = N
-		self.h = 1.0 / N
-		self.borderFunction = borderFunction
-		self.valueFunction = valueFunction
-
-		self.rowList = []
-		self.colList = []
-		self.dataList = []
-
-		self.rowListDiagonal = []
-		self.colListDiagonal = []
-		self.dataListDiagonal = []
-
-		self.rowListRemainder = []
-		self.colListRemainder = []
-		self.dataListRemainder = []
-
-		self.rowListUpper = []
-		self.colListUpper = []
-		self.dataListUpper = []
-
-		self.rowListLower = []
-		self.colListLower = []
-		self.dataListLower = []
-
-		self.valueVector2D = []
-
-		self.computeMatrixAndVector()
-		self.M = csr_matrix((np.array(self.dataList), (np.array(self.rowList), np.array(self.colList))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
-		self.D = csr_matrix((np.array(self.dataListDiagonal), (np.array(self.rowListDiagonal), np.array(self.colListDiagonal))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
-		self.R = csr_matrix((np.array(self.dataListRemainder), (np.array(self.rowListRemainder), np.array(self.colListRemainder))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
-
-		# Lower and strictly upper matrices L, U with L + U = M
-		self.L = csr_matrix((np.array(self.dataListLower), (np.array(self.rowListLower), np.array(self.colListLower))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
-		self.U = csr_matrix((np.array(self.dataListUpper), (np.array(self.rowListUpper), np.array(self.colListUpper))), shape = ((N + 1) * (N + 1), (N + 1) * (N + 1)))
-
-	# Helper functions for creating the complete, lower, upper and diagonal matrices
-	def addEntry(self, type, row, column, value):
-	    if(type == COMPLETE_MATRIX):
-	        self.rowList.append(row)
-	        self.colList.append(column)
-	        self.dataList.append(value)
-	    elif(type == LOWER_MATRIX):
-	        self.rowListLower.append(row)
-	        self.colListLower.append(column)
-	        self.dataListLower.append(value)
-	    elif(type == STRICTLY_UPPER_MATRIX):
-	        self.rowListUpper.append(row)
-	        self.colListUpper.append(column)
-	        self.dataListUpper.append(value)
-	    elif(type == DIAGONAL_MATRIX):
-	        self.rowListDiagonal.append(row)
-	        self.colListDiagonal.append(column)
-	        self.dataListDiagonal.append(value)
-	    elif(type == REMAINDER_MATRIX):
-	        self.rowListRemainder.append(row)
-	        self.colListRemainder.append(column)
-	        self.dataListRemainder.append(value)
-
-
-	def addEntryToMatrices(self, row, column, value):
-	    self.addEntry(COMPLETE_MATRIX, row, column, value)
-	    if(row == column):
-	        self.addEntry(DIAGONAL_MATRIX, row, column, value)
-	        self.addEntry(LOWER_MATRIX, row, column, value)
-	    if(row > column):
-	        self.addEntry(LOWER_MATRIX, row, column, value)
-	        self.addEntry(REMAINDER_MATRIX, row, column, value)
-	    if(row < column):
-	        self.addEntry(STRICTLY_UPPER_MATRIX, row, column, value)
-	        self.addEntry(REMAINDER_MATRIX, row, column, value)
-
-	valueVector2D = []
-
-
-	# Check if a(i,j) is on border
-	def isOnBorder(self, i, j):
-	    # print(i, j)
-	    if(i == 0 or j == 0 or i == self.N or j == self.N):
-	        return True
-	    else:
-	        return False
-
-
-	# Get the coordinates of the variable around which the row-th row is created
-	def getCoordinates(self, row):
-	    return int(row / (self.N + 1)), row % (self.N + 1)
-
-
-	# Get the row of a(i, j)'s equation
-	def getRow(self, i, j):
-	    return(i * (self.N + 1) + j)
-
-
-	# Compute M and valueVector2D (in Mx = valueVector2D) and
-	# computer L, U, D (lower, strictly upper and diagonal matrices of M)
-	def computeMatrixAndVector(self):
-	    for currentRow in range((self.N + 1) * (self.N + 1)):
-	        self.computeRow(currentRow)
-
-
-	# Compute the elements of row-th row in (rowList, colList, dataList) for -nabla f(x,t) = g(x,t) problem
-	def computeRow(self, row):
-	    (x, y) = self.getCoordinates(row)
-	    if(self.isOnBorder(x, y)):
-	        self.addEntryToMatrices(row, row, 1.0)
-	        # The value of the border on point x/N, y/N is known,
-	        # so append the equation variable = value to the system
-	        self.valueVector2D.append(self.borderFunction((1.0) * x / self.N, (1.0) * y / self.N))
-	    else:
-	        value = - self.valueFunction((1.0) * x / self.N, (1.0) * y / self.N) * self.h * self.h
-	        self.addEntryToMatrices(row, row, 4.0)
-
-	        for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-	            if(not(self.isOnBorder(x + dX, y + dY))):
-	                self.addEntryToMatrices(row, self.getRow(x + dX, y + dY), -1.0)
-	            else:
-	                localValue = self.borderFunction((1.0) * (x + dX) / self.N, (1.0) * (y + dY) / self.N)
-	                value += localValue
-	        self.valueVector2D.append(value)
-
-
-# Value of the border function on values x,y
-def sinBorderFunction(x, y):
-    # Assert (x,y) is on border
-    value = 1.0 * math.sin(x) * math.sin(y)
-    return value
-
-
-# RHS value of the differential equation at points x, y
-def sinValueFunction(x, y):
-    value = - 2.0 * math.sin(x) * math.sin(y)
-    return value
-
-
-def borderFunction1(x, y):
-	value = 1.0 * (x * x * x + y * y * y + x + y + 1.0)
-	return value
-
-def laplaceValueFunction1(x, y):
-	value = 6.0 * x + 6.0 * y
-	return value
-
-
 
 
 # N = int(input("Enter inverse of coordinates sample rate for the coarser grid\n"))
 
 # sinEquationDiscr = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
 
-for N in [4,8,16,32,64,128]:
-	xSolPrecond, errPrecond, errDataPrecond = MultiGridPrecondCG(sinBorderFunction, sinValueFunction, N)
+for N in [4,8,16,32]:
+	xSolPrecond, errPrecond, errDataPrecond = MultiGridPrecondCG(fe.sinBorderFunction, fe.sinValueFunction, N)
 	plt.plot(errDataPrecond, label=str(N))
 
 
@@ -746,7 +468,7 @@ plt.show()
 # ax.set_zlabel('Z Label')
 
 
-# solver = SolverMethods(100, sinEquationDiscr)
+# solver = sm.SolverMethods(100, sinEquationDiscr)
 # (xFine, absErr, errorDataJacobi, rFine) = solver.JacobiIterate()
 
 # print(errorDataJacobi)

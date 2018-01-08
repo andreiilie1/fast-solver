@@ -1,0 +1,3 @@
+Preconditioned Conjugate Gradients
+
+Using MG (SSOR, niu1 = niu2 = 3) as a smoother; 2 iterations of the v-cycle as precond

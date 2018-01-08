@@ -1,0 +1,3 @@
+Preconditioned Conjugate Gradients
+
+using Multigrid - v-cycle (SSOR smoothing, w=1, niu1 = niu2 = 1)
