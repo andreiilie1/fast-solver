@@ -56,10 +56,17 @@ class SolverMethods:
 		d = self.L.diagonal()
 		iterationConstant = self.iterationConstant
 
+		currentLowerRows = []
+		currentUpperRows =[]
+
 		if(self.initSol == []):
 			x = np.zeros_like(self.b)
 		else:
 			x = self.initSol
+
+		for j in range(self.L.shape[0]):
+			currentLowerRows.append(self.L.getrow(j))
+			currentUpperRows.append(self.U.getrow(j))
 
 		for i in range(iterationConstant):
 			err = np.subtract(self.M.dot(x), self.b)
@@ -68,8 +75,8 @@ class SolverMethods:
 
 			xNew = np.zeros_like(x)
 			for j in range(self.L.shape[0]):
-				currentLowerRow = self.L.getrow(j)
-				currentUpperRow = self.U.getrow(j)
+				currentLowerRow = currentLowerRows[j]
+				currentUpperRow = currentUpperRows[j]
 
 				rowSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x)
 				xNew[j] = 1.0 * (self.b[j] - rowSum) / d[j]
@@ -90,10 +97,17 @@ class SolverMethods:
 		d = self.D.diagonal()
 		iterationConstant = self.iterationConstant
 
+		currentLowerRows = []
+		currentUpperRows = []
+
 		if(self.initSol == []):
 			x = np.zeros_like(self.b)
 		else:
 			x = self.initSol
+
+		for j in range(self.L.shape[0]):
+			currentLowerRows.append(self.L.getrow(j))
+			currentUpperRows.append(self.U.getrow(j))
 
 		for k in range(iterationConstant):
 
@@ -104,8 +118,8 @@ class SolverMethods:
 			xNew = np.zeros_like(x)
 
 			for i in range(self.L.shape[0]):
-				currentLowerRow = self.L.getrow(i)
-				currentUpperRow = self.U.getrow(i)
+				currentLowerRow = currentLowerRows[i]
+				currentUpperRow = currentUpperRows[i]
 
 				currSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x)
 				currSum = 1.0 * (self.b[i] - currSum) / d[i]
@@ -116,8 +130,8 @@ class SolverMethods:
 
 			for i in reversed(range(self.L.shape[0])):
 				currSum = 0
-				currentLowerRow = self.L.getrow(i)
-				currentUpperRow = self.U.getrow(i)
+				currentLowerRow = currentLowerRows[i]
+				currentUpperRow = currentUpperRows[i]
 
 				currSum = currentLowerRow.dot(x) + currentUpperRow.dot(xNew) - d[i] * x[i]
 				currSum = 1.0 * (self.b[i] - currSum) / d[i]

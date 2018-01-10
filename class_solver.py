@@ -14,11 +14,20 @@ tol = 0.000001
 
 class MultiGrid:
 
-	def __init__(self, borderFunction, valueFunction, niu1 = 3, niu2 = 3):
+	def __init__(self, maxN, borderFunction, valueFunction, niu1 = 1, niu2 = 1):
 		self.borderFunction = borderFunction
 		self.valueFunction = valueFunction
 		self.niu1 = niu1
 		self.niu2 = niu2
+		self.discrLevel = []
+		self.maxN = maxN
+
+		i = 0
+		while(maxN >= 2):
+			assert(maxN % 2 == 0)
+			self.discrLevel.append(sed.SimpleEquationDiscretizer(maxN, self.borderFunction, self.valueFunction))
+			i += 1
+			maxN /= 2
 
 
 	def getCoordinates(self, row, N):
@@ -64,14 +73,17 @@ class MultiGrid:
 
 		return interp
 
-
 	def restrictTransposeAction(self, r, fineN, coarseN):
 		restr = []
+		# print("Restriction step: ")
+		# print("Before: ", r)
 
 		for i in range((coarseN + 1) * (coarseN + 1)):
 			(x, y) = self.getCoordinates(i, coarseN)
 			(x, y) = (2 * x, 2 * y)
 			newEntry = r[self.getRow(x, y, fineN)]
+
+			divideFactor = 1.0
 
 			for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
 				newX = x + dX
@@ -79,6 +91,7 @@ class MultiGrid:
 				if(0 <= newX and newX <= fineN and 0 <= newY and newY <= fineN):
 					index = self.getRow(newX, newY, fineN)
 					newEntry += 0.5 * r[index]
+					divideFactor += 0.5
 
 			for (dX, dY) in [(1, 1), (-1, 1), (-1, -1), (1, -1)]:
 				newX = x + dX
@@ -86,23 +99,30 @@ class MultiGrid:
 				if(0 <= newX and newX <= fineN and 0 <= newY and newY <= fineN):
 					index = self.getRow(newX, newY, fineN)
 					newEntry += 0.25 * r[index]
+					divideFactor += 0.25
+			
+			newEntry = 1.0 * newEntry / divideFactor
+			print(divideFactor)
 
-			newEntry = newEntry * 0.25
 			restr.append(newEntry)
 
+		# print("After: ", restr)
 		return restr
 
 
-	def vcycle(self, N, f, initSol = []):
-		discr = sed.SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
-
+	def vcycle(self, N, level, f, initSol = []):
+		# discr = sed.SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
+		discr = self.discrLevel[level]
 		fSize = len(f)
 		if(fSize < 20):
 			v = la.solve(discr.M.todense(), f)
 			return v
 
 		solver1 = sm.SolverMethods(self.niu1, discr, f, initSol)
-		v, _, _, _ = solver1.SSORIterate()
+		omega = 2.0 / (1.0 + math.sin (math.pi * discr.h))
+		print('omega is ', omega)
+
+		v, _, _, _ = solver1.SSORIterate(omega)
 
 		assert(N % 2 == 0)
 		coarseN = N  / 2
@@ -111,25 +131,25 @@ class MultiGrid:
 		residual = np.subtract(np.array(f), Mv)
 		coarseResidual = self.restrictTransposeAction(residual, N, coarseN)
 
-		coarseV = self.vcycle(coarseN, coarseResidual)
+		coarseV = self.vcycle(coarseN, level + 1, coarseResidual)
 		fineV = self.interpolate(coarseV, N, coarseN)
 		v = np.add(v, fineV)
 
 		solver2 = sm.SolverMethods(self.niu2, discr, f, v)
-		v2, _, _, _ = solver2.SSORIterate()
+		v2, _, _, _ = solver2.SSORIterate(omega)
 		return v2
 
 	def iterateVCycles(self, N, t):
 		initSol = []
 		vErrors = []
-		discr = sed.SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
+		discr = self.discrLevel[0]
 		f = discr.valueVector2D
 
 		for i in range(t):
-			currSol = self.vcycle(N, f, initSol)
+			currSol = self.vcycle(N, 0, f, initSol)
 
-			err = np.subtract(discr.M.dot(currSol), discr.valueVector2D)
-			absErr = 1.0 * np.linalg.norm(err) / np.linalg.norm(discr.valueVector2D)
+			err = np.subtract(discr.M.dot(currSol), f)
+			absErr = 1.0 * np.linalg.norm(err) / np.linalg.norm(f)
 			vErrors.append(math.log(absErr))
 			if(absErr < tol):
 				break
@@ -141,7 +161,7 @@ class MultiGrid:
 
 class MultiGridAsPreconditioner:
 
-	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 3, niu2 = 3):
+	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 1 , niu2 = 1):
 		self.borderFunction = borderFunction
 		self.valueFunction = valueFunction
 		self.niu1 = niu1
@@ -215,7 +235,7 @@ class MultiGridAsPreconditioner:
 
 			newEntry = newEntry * 0.25
 			restr.append(newEntry)
-
+		print("After: ", restr)
 		return restr
 
 
@@ -282,7 +302,7 @@ def MultiGridPrecondCG(borderFunction, valueFunction, N):
 	r = np.subtract(f, M.dot(x))
 
 	mg.bVector = r
-	rTilda, _ = mg.iterateVCycles(N, 2)
+	rTilda, _ = mg.iterateVCycles(N, 1)
 	rTilda = np.array(rTilda)
 
 	p = np.copy(rTilda)
@@ -313,7 +333,7 @@ def MultiGridPrecondCG(borderFunction, valueFunction, N):
 		newR = np.subtract(r, np.multiply(M.dot(p), alpha))
 
 		mg.bVector = newR
-		newR_tilda, _ = mg.iterateVCycles(N, 2)
+		newR_tilda, _ = mg.iterateVCycles(N, 1)
 		newR_tilda = np.array(newR_tilda)
 
 		beta_numerator = newR_tilda.dot(newR)
@@ -396,7 +416,8 @@ def JacobiPrecondCG(borderFunction, valueFunction, N):
 	return x, absErr, errorDataMGCG
 
 
-
+#Idea : compute finer solutions as we advance in the timestep
+# i.e. 100 iterations for t=0, 120 for t = 1, 140 for t = 2, etc.
 def solveHeatEquationForAllTimeSteps(discr):
 	solHeat = discr.initialHeatTimeSolution()
 	valueVector = discr.computeVectorAtTimestep(1, solHeat)
@@ -413,28 +434,66 @@ def solveHeatEquationForAllTimeSteps(discr):
 
 	return sol
 
-
-
-#Idea : compute finer solutions as we advance in the timestep
-# i.e. 100 iterations for t=0, 120 for t = 1, 140 for t = 2, etc.
-
+# ______________________________________________________________
+# DEBUG TOOLS
 
 
 
+def testHeatEquationSolver():
+	discrTest = ted.TimeEquationDiscretizer(32,32,fe.heatSinBorderFunction, fe.heatRhsFunction, fe.heatInitialFunction)
+	sol = solveHeatEquationForAllTimeSteps(discrTest)
+	xSol = sol[16]
+	return xSol
+
+def testMGCG():
+	for N in [4,8,16,32]:
+		xSolPrecond, errPrecond, errDataPrecond = MultiGridPrecondCG(fe.sinBorderFunction, fe.sinValueFunction, N)
+		plt.plot(errDataPrecond, label=str(N))
+	plt.show()
+
+def plotGraph(N, valuesVector):
+	h = 1.0 / N
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection = '3d')
+	x = y = np.arange(0.0, 1.0 + h, h)
+	X, Y = np.meshgrid(x, y)
+
+	Z = np.reshape(valuesVector, (N+1, N+1))
+	ax.plot_wireframe(X, Y, Z)
+	ax.set_xlabel('X Label')
+	ax.set_ylabel('Y Label')
+	ax.set_zlabel('Z Label')
+	plt.show()
+
+
+def testMG():
+	N = 64
+	n = 2
+	i = 0
+	while(n < N):
+		n = n * 2
+		mg = MultiGrid(n, fe.sinBorderFunction, fe.sinValueFunction )
+		solMG, vErrors = mg.iterateVCycles(n, 600)
+		plt.plot(vErrors, label = str(n))
+		plt.legend(loc='upper right')
+		print(vErrors)
+
+	plt.show()
 
 
 
+
+
+
+
+testMG()
 
 
 # N = int(input("Enter inverse of coordinates sample rate for the coarser grid\n"))
 
 # sinEquationDiscr = SimpleEquationDiscretizer(N, sinBorderFunction, sinValueFunction)
-discrTest = ted.TimeEquationDiscretizer(32,32,fe.heatSinBorderFunction, fe.heatRhsFunction, fe.heatInitialFunction)
-sol = solveHeatEquationForAllTimeSteps(discrTest)
-xSol = sol[16]
-for N in []:
-	xSolPrecond, errPrecond, errDataPrecond = MultiGridPrecondCG(fe.sinBorderFunction, fe.sinValueFunction, N)
-	plt.plot(errDataPrecond, label=str(N))
+
+# testMGCG()
 
 
 # xSol, err, errData = ConjugateGradientsHS(sinBorderFunction, sinValueFunction, N)
@@ -442,19 +501,7 @@ for N in []:
 
 # plt.legend(loc='upper right')
 # plt.show()
-N = 32
-h = 1.0 / N
-fig = plt.figure()
-ax = fig.add_subplot(111, projection = '3d')
-x = y = np.arange(0.0, 1.0 + h, h)
-X, Y = np.meshgrid(x, y)
-
-Z = np.reshape(xSol, (N+1, N+1))
-ax.plot_wireframe(X, Y, Z)
-ax.set_xlabel('X Label')
-ax.set_ylabel('Y Label')
-ax.set_zlabel('Z Label')
-plt.show()
+# plotGraph(32, testHeatEquationSolver())
 
 # solver = sm.SolverMethods(100, sinEquationDiscr)
 # (xFine, absErr, errorDataJacobi, rFine) = solver.JacobiIterate()
