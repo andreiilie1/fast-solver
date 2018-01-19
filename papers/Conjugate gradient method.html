@@ -1,0 +1,1305 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<!--Converted with LaTeX2HTML 2008 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=windows-1252">
+<title>Conjugate gradient method</title>
+<meta name="description" content="Conjugate gradient method">
+<meta name="keywords" content="NM">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+
+<meta name="Generator" content="LaTeX2HTML v2008">
+<meta http-equiv="Content-Style-Type" content="text/css">
+
+<link rel="STYLESHEET" href="Conjugate%20gradient%20method_files/NM.css">
+
+<link rel="next" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node30.html">
+<link rel="previous" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node28.html">
+<link rel="up" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node22.html">
+<link rel="next" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node30.html">
+</head>
+
+<body>
+<!--Navigation Panel-->
+<a name="tex2html419" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node30.html">
+<img alt="next" src="Conjugate%20gradient%20method_files/next.png" border="0" width="37" height="24" align="BOTTOM"></a> 
+<a name="tex2html417" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node22.html">
+<img alt="up" src="Conjugate%20gradient%20method_files/up.png" border="0" width="26" height="24" align="BOTTOM"></a> 
+<a name="tex2html411" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node28.html">
+<img alt="previous" src="Conjugate%20gradient%20method_files/prev.png" border="0" width="63" height="24" align="BOTTOM"></a>   
+<br>
+<b> Next:</b> <a name="tex2html420" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node30.html">Simulated annealing</a>
+<b> Up:</b> <a name="tex2html418" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node22.html">Optimization</a>
+<b> Previous:</b> <a name="tex2html412" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node28.html">Line minimization</a>
+<br>
+<br>
+<!--End of Navigation Panel-->
+
+<h2><a name="SECTION00047000000000000000">
+Conjugate gradient method</a>
+</h2>
+
+<p>
+The gradient descent method may not be efficient because it could get into the 
+zigzag pattern and repeat the same search directions many times. This problem is 
+avoided in the conjugate gradient (CG) method, which does not repeat any previous 
+search direction and converge in <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> iterations. The CG method is a significant 
+improvement in comparison to the gradient descent method.
+
+</p><p>
+We will first assume the function <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> to be minimized is quadratic:
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+f({\bf x})=\frac{1}{2}{\bf x}^T{\bf A}{\bf x}-{\bf b}^T{\bf x}+c
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1633.png" alt="\begin{displaymath}f({\bf x})=\frac{1}{2}{\bf x}^T{\bf A}{\bf x}-{\bf b}^T{\bf x}+c \end{displaymath}" border="0" width="212" height="45">
+</div>
+<br clear="ALL">
+<p></p>
+where <!-- MATH
+ ${\bf A}={\bf A}^T$
+ -->
+<img src="Conjugate%20gradient%20method_files/img919.png" alt="${\bf A}={\bf A}^T$" border="0" width="73" height="19" align="BOTTOM"> is symmetric. The gradient (first derivatives) of the 
+function is (see <a name="tex2html46" href="http://fourier.eng.hmc.edu/e176/lectures/algebra/node13.html">here</a>):
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf g}=\frac{d}{d{\bf x}}f({\bf x})
+  =\frac{d}{d{\bf x}}\left(\frac{1}{2}{\bf x}^T{\bf A}{\bf x}-{\bf b}^T{\bf x}+c\right)
+  ={\bf A}{\bf x}-{\bf b}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1634.png" alt="\begin{displaymath}
+{\bf g}=\frac{d}{d{\bf x}}f({\bf x})
+=\frac{d}{d{\bf x}}\l...
+... A}{\bf x}-{\bf b}^T{\bf x}+c \right)
+={\bf A}{\bf x}-{\bf b}
+\end{displaymath}" border="0" width="414" height="47">
+</div>
+<br clear="ALL">
+<p></p>
+and the Hessian matrix (second derivatives) of the function is simply <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM">,
+which is assumed to be positive definite, so that <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> has a minimum. 
+
+<p>
+At the solution <img src="Conjugate%20gradient%20method_files/img61.png" alt="${\bf x}$" border="0" width="16" height="19" align="BOTTOM"> where <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> is minimized, we have
+<!-- MATH
+ ${\bf g}={\bf A}{\bf x}-{\bf b}={\bf0}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1653.png" alt="${\bf g}={\bf A}{\bf x}-{\bf b}={\bf0}$" border="0" width="139" height="35" align="MIDDLE">. We see that the minimization of a
+quadratic function <!-- MATH
+ $f({\bf x})={\bf x}^T{\bf A}{\bf x}-{\bf b}^T{\bf x}+c$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1654.png" alt="$f({\bf x})={\bf x}^T{\bf A}{\bf x}-{\bf b}^T{\bf x}+c$" border="0" width="204" height="40" align="MIDDLE"> is 
+equivalent to solving a linear equation systems <!-- MATH
+ ${\bf A}{\bf x}={\bf b}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img135.png" alt="${\bf A}{\bf x}={\bf b}$" border="0" width="69" height="20" align="BOTTOM"> for 
+<img src="Conjugate%20gradient%20method_files/img61.png" alt="${\bf x}$" border="0" width="16" height="19" align="BOTTOM"> given a symmetric positive definite matrix <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM"> and a vector 
+<img src="Conjugate%20gradient%20method_files/img549.png" alt="${\bf b}$" border="0" width="16" height="20" align="BOTTOM">. The CG method considered below can therefore be used for solving
+both problems. Later we will relax the condition for <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> and consider
+using CG to minimize non-quadratic functions.
+
+</p><p>
+Before discussing the CG algorithm, we first consider the concept of conjugate
+vectors, which is the key to the CG method. A set of vectors 
+<!-- MATH
+ $\{{\bf d}_0,\cdots,{\bf d}_{N-1}\}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1655.png" alt="$\{{\bf d}_0,\cdots,{\bf d}_{N-1}\}$" border="0" width="127" height="39" align="MIDDLE"> satisfying
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\langle{\bf d}_i,{\bf A}{\bf d}_j\rangle
+={\bf d}_i^T{\bf A}{\bf d}_j
+=({\bf A}{\bf d}_j)^T{\bf d}_i
+={\bf d}_j^T{\bf A}{\bf d}_i=\langle{\bf d}_j,{\bf A}{\bf d}_i\rangle=0,
+\;\;\;\;\;\;\;\;{\bf A}^T={\bf A},\;\;\;\;\;0\le i,j\le N-1
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1656.png" alt="\begin{displaymath}
+\langle{\bf d}_i,{\bf A}{\bf d}_j\rangle
+={\bf d}_i^T{\bf A}...
+...0,
+\;\;\;\;\;\;\;\;{\bf A}^T={\bf A},\;\;\;\;\;0\le i,j\le N-1
+\end{displaymath}" border="0" width="753" height="35">
+</div>
+<br clear="ALL">
+<p></p>
+is <em>mutually conjugate</em> to each other with respect to <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM">. The
+vectors are also said to be A-conjugate or A-orthogonal to each other. 
+Comparing this to two orthogonal vectors <img src="Conjugate%20gradient%20method_files/img741.png" alt="${\bf u}$" border="0" width="16" height="19" align="BOTTOM"> and <img src="Conjugate%20gradient%20method_files/img737.png" alt="${\bf v}$" border="0" width="16" height="19" align="BOTTOM"> satisfying 
+<!-- MATH
+ $\langle{\bf u},{\bf v}\rangle=\langle {\bf v},{\bf u}\rangle=0$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1657.png" alt="$\langle{\bf u},{\bf v}\rangle=\langle {\bf v},{\bf u}\rangle=0$" border="0" width="158" height="39" align="MIDDLE">, we see that
+two conjugate vectors satisfying <!-- MATH
+ $\langle{\bf d}_i,{\bf A}{\bf d}_j\rangle
+=\langle{\bf d}_j,{\bf A}{\bf d}_i\rangle=0$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1658.png" alt="$\langle{\bf d}_i,{\bf A}{\bf d}_j\rangle
+=\langle{\bf d}_j,{\bf A}{\bf d}_i\rangle=0$" border="0" width="216" height="39" align="MIDDLE">
+can also be considered as orthogonal to each other with respect to <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM">.
+As these <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> vectors are independent of each other, they can be considered as
+a basis that spans the N-D space, in which any vector can be expressed as a 
+linear combination of them.
+
+<p>
+The basic strategy of the CG method is for the iteration to follow a search
+path composed of <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> segments each along one of the <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> mutually conjugate
+search directions. After the nth iteration that traversed along the search 
+direction <img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE"> to arrive at <img src="Conjugate%20gradient%20method_files/img692.png" alt="${\bf x}_n$" border="0" width="25" height="35" align="MIDDLE">, the search direction 
+<img src="Conjugate%20gradient%20method_files/img1659.png" alt="${\bf d}_{n+1}$" border="0" width="43" height="35" align="MIDDLE"> in the next iteration will be A-conjugate to the previous one 
+<img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE">. By doing so, the total error at the initial guess <img src="Conjugate%20gradient%20method_files/img815.png" alt="${\bf x}_0$" border="0" width="23" height="35" align="MIDDLE">
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf e}_0={\bf x}_0-{\bf x}=\sum_{i=0}^{N-1} c_i{\bf d}_i
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1660.png" alt="\begin{displaymath}
+{\bf e}_0={\bf x}_0-{\bf x}=\sum_{i=0}^{N-1} c_i{\bf d}_i
+\end{displaymath}" border="0" width="184" height="58">
+</div>
+<br clear="ALL">
+<p></p>
+will be eliminated one component at a time in each of the <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> iterations,
+so that after <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> such iterations the error at <img src="Conjugate%20gradient%20method_files/img1661.png" alt="${\bf x}_N$" border="0" width="29" height="35" align="MIDDLE"> becomes zero,
+<!-- MATH
+ ${\bf e}_N={\bf x}_N-{\bf x}={\bf0}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1662.png" alt="${\bf e}_N={\bf x}_N-{\bf x}={\bf0}$" border="0" width="147" height="35" align="MIDDLE">, and <!-- MATH
+ ${\bf x}_N={\bf x}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1663.png" alt="${\bf x}_N={\bf x}$" border="0" width="65" height="35" align="MIDDLE"> becomes
+the solution. 
+
+<p>
+Now we consider specifically the CG algorithm with the following general
+iteration:
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf x}_{n+1}={\bf x}_n+\delta_n \; {\bf d}_n
+  ={\bf x}_n-\frac{{\bf g}_n^T{\bf d}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}{\bf d}_n
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1664.png" alt="\begin{displaymath}
+{\bf x}_{n+1}={\bf x}_n+\delta_n \; {\bf d}_n
+={\bf x}_n-\frac{{\bf g}_n^T{\bf d}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}{\bf d}_n
+\end{displaymath}" border="0" width="302" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+where <!-- MATH
+ $\delta_n=-{\bf g}_n^T{\bf d}_n/{\bf d}_n^T{\bf A}{\bf d}_n$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1665.png" alt="$\delta_n=-{\bf g}_n^T{\bf d}_n/{\bf d}_n^T{\bf A}{\bf d}_n$" border="0" width="173" height="40" align="MIDDLE"> is the 
+optimal step size derived previously. Subtracting 
+<!-- MATH
+ ${\bf x}={\bf x}_{n+1}-{\bf e}_{n+1}={\bf x}_n-{\bf e}_n$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1588.png" alt="${\bf x}={\bf x}_{n+1}-{\bf e}_{n+1}={\bf x}_n-{\bf e}_n$" border="0" width="226" height="35" align="MIDDLE"> from both sides, we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf e}_{n+1}
+  ={\bf e}_n-\frac{{\bf g}_n^T{\bf d}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}{\bf d}_n
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1666.png" alt="\begin{displaymath}
+{\bf e}_{n+1}
+={\bf e}_n-\frac{{\bf g}_n^T{\bf d}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}{\bf d}_n
+\end{displaymath}" border="0" width="187" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+where <img src="Conjugate%20gradient%20method_files/img1555.png" alt="${\bf g}_n$" border="0" width="24" height="35" align="MIDDLE"> is the gradient of <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> at <img src="Conjugate%20gradient%20method_files/img692.png" alt="${\bf x}_n$" border="0" width="25" height="35" align="MIDDLE">, which can 
+be found to be
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf g}_n={\bf A}{\bf x}_n-{\bf b}={\bf A}({\bf x}+{\bf e}_n)-{\bf b}
+  ={\bf A}{\bf x}-{\bf b}+{\bf A}{\bf e}_n={\bf A}{\bf e}_n
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1667.png" alt="\begin{displaymath}
+{\bf g}_n={\bf A}{\bf x}_n-{\bf b}={\bf A}({\bf x}+{\bf e}_...
+... b}
+={\bf A}{\bf x}-{\bf b}+{\bf A}{\bf e}_n={\bf A}{\bf e}_n
+\end{displaymath}" border="0" width="466" height="33">
+</div>
+<br clear="ALL">
+<p></p>
+(Note that <!-- MATH
+ ${\bf A}{\bf x}-{\bf b}={\bf g}={\bf0}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1668.png" alt="${\bf A}{\bf x}-{\bf b}={\bf g}={\bf0}$" border="0" width="139" height="35" align="MIDDLE">.) Substituting this 
+<!-- MATH
+ ${\bf g}_n={\bf A}{\bf e}_n$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1669.png" alt="${\bf g}_n={\bf A}{\bf e}_n$" border="0" width="84" height="35" align="MIDDLE"> into the previous equation we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf e}_{n+1}
+  ={\bf e}_n-\frac{{\bf g}_n^T{\bf d}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}{\bf d}_n
+  ={\bf e}_n-\frac{{\bf e}_n^T{\bf A}{\bf d}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}{\bf d}_n
+  ={\bf e}_n-\frac{{\bf d}_n^T{\bf A}{\bf e}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}{\bf d}_n
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1670.png" alt="\begin{displaymath}
+{\bf e}_{n+1}
+={\bf e}_n-\frac{{\bf g}_n^T{\bf d}_n}{{\bf ...
+... d}_n^T{\bf A}{\bf e}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}{\bf d}_n
+\end{displaymath}" border="0" width="490" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+Pre-multiplying both sides by <!-- MATH
+ ${\bf d}^T_n{\bf A}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1671.png" alt="${\bf d}^T_n{\bf A}$" border="0" width="43" height="40" align="MIDDLE"> we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}_n^T{\bf A}{\bf e}^T_{n+1}
+  ={\bf d}^T_n{\bf A}\left[{\bf e}_n-\left(\frac{{\bf d}_n^T{\bf A}{\bf e}_n}
+    {{\bf d}_n^T{\bf A}{\bf d}_n}\right){\bf d}_n\right]
+  ={\bf d}^T_n{\bf A}{\bf e}_n
+  -\left(\frac{{\bf d}_n^T{\bf A}{\bf e}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}\right){\bf d}_n^T{\bf A}{\bf d}_n=0
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1672.png" alt="\begin{displaymath}
+{\bf d}_n^T{\bf A}{\bf e}^T_{n+1}
+={\bf d}^T_n{\bf A}\left...
+...bf d}_n^T{\bf A}{\bf d}_n}\right){\bf d}_n^T{\bf A}{\bf d}_n=0
+\end{displaymath}" border="0" width="598" height="55">
+</div>
+<br clear="ALL">
+<p></p>
+We see that after taking the nth step along the direction <img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE"> to arrive 
+at <img src="Conjugate%20gradient%20method_files/img1390.png" alt="${\bf x}_{n+1}$" border="0" width="42" height="35" align="MIDDLE">, the remaining error <img src="Conjugate%20gradient%20method_files/img1612.png" alt="${\bf e}_{n+1}$" border="0" width="41" height="35" align="MIDDLE"> is A-conjugate to the 
+previous search direction <img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE">. To reduce the error as much as possible, 
+the next search direction <img src="Conjugate%20gradient%20method_files/img1659.png" alt="${\bf d}_{n+1}$" border="0" width="43" height="35" align="MIDDLE"> should be along one of the directions 
+that span the remaining <img src="Conjugate%20gradient%20method_files/img1612.png" alt="${\bf e}_{n+1}$" border="0" width="41" height="35" align="MIDDLE">, that is A-conjugate to the previous 
+search direction <img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE">, instead of just orthogonal to it as in the case
+of gradient descent method, so that the component in <img src="Conjugate%20gradient%20method_files/img1612.png" alt="${\bf e}_{n+1}$" border="0" width="41" height="35" align="MIDDLE"> corresponding
+to the direction of <img src="Conjugate%20gradient%20method_files/img1659.png" alt="${\bf d}_{n+1}$" border="0" width="43" height="35" align="MIDDLE"> can be eliminated. Carrying out such a search in
+<img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> iterations each eliminating one of the <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> components of the initial error 
+<img src="Conjugate%20gradient%20method_files/img827.png" alt="${\bf e}_0$" border="0" width="22" height="35" align="MIDDLE">, we get <!-- MATH
+ ${\bf e}_N={\bf0}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1673.png" alt="${\bf e}_N={\bf0}$" border="0" width="63" height="35" align="MIDDLE">, i.e., the error is completely eliminated.
+
+<p>
+To see this, we premultiply both sides of the initial error equation
+<!-- MATH
+ ${\bf e}_0=\sum_{j=0}^{N-1}c_j{\bf d}_j$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1674.png" alt="${\bf e}_0=\sum_{j=0}^{N-1}c_j{\bf d}_j$" border="0" width="131" height="43" align="MIDDLE"> by <!-- MATH
+ ${\bf d}^T_n{\bf A}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1671.png" alt="${\bf d}^T_n{\bf A}$" border="0" width="43" height="40" align="MIDDLE"> and get
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}^T_n{\bf A}{\bf e}_0=\sum_{j=0}^{N-1}c_j{\bf d}^T_n{\bf A}{\bf d}_j 
+=c_n{\bf d}^T_n{\bf A}{\bf d}_n
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1675.png" alt="\begin{displaymath}
+{\bf d}^T_n{\bf A}{\bf e}_0=\sum_{j=0}^{N-1}c_j{\bf d}^T_n{\bf A}{\bf d}_j
+=c_n{\bf d}^T_n{\bf A}{\bf d}_n
+\end{displaymath}" border="0" width="288" height="61">
+</div>
+<br clear="ALL">
+<p></p>
+Solving for <img src="Conjugate%20gradient%20method_files/img1676.png" alt="$c_n$" border="0" width="22" height="35" align="MIDDLE"> we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+c_n=\frac{ {\bf d}^T_n{\bf A}{\bf e}_0}{ {\bf d}^T_n{\bf A}{\bf d}_n} 
+=\frac{ {\bf d}^T_n{\bf A} \left( {\bf e}_0+\sum_{i=0}^{n-1}\delta_i{\bf d}_i \right)}
+{{\bf d}^T_n{\bf A}{\bf d}_n} 
+=\frac{{\bf d}^T_n{\bf A} {\bf e}_n}{{\bf d}^T_n{\bf A}{\bf d}_n}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1677.png" alt="\begin{displaymath}c_n=\frac{ {\bf d}^T_n{\bf A}{\bf e}_0}{ {\bf d}^T_n{\bf A}{\...
+...rac{{\bf d}^T_n{\bf A} {\bf e}_n}{{\bf d}^T_n{\bf A}{\bf d}_n}
+\end{displaymath}" border="0" width="400" height="60">
+</div>
+<br clear="ALL">
+<p></p>
+Here we have used the fact that <!-- MATH
+ ${\bf e}_n={\be e}_0+\sum_{i=0}^{n-1}\delta_i{\bf d}_i$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1678.png" alt="${\bf e}_n={\be e}_0+\sum_{i=0}^{n-1}\delta_i{\bf d}_i$" border="0" width="165" height="42" align="MIDDLE">
+and that the nth search direction <img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE"> is A-orthogonal to all previous 
+directions. Comparing this result with the expression of <img src="Conjugate%20gradient%20method_files/img1585.png" alt="$\delta_n$" border="0" width="22" height="35" align="MIDDLE"> obtained 
+above, we see that <img src="Conjugate%20gradient%20method_files/img1679.png" alt="$\delta_n=-c_n$" border="0" width="79" height="35" align="MIDDLE">, and the expression for <img src="Conjugate%20gradient%20method_files/img822.png" alt="${\bf e}_n$" border="0" width="23" height="35" align="MIDDLE"> can 
+now be written as
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf e}_{n+1}={\bf e}_0+\sum_{j=0}^n\delta_j{\bf d}_j={\bf e}_0-\sum_{j=0}^n c_j{\bf d}_j
+=\sum_{j=0}^{N-1}c_j{\bf d}_j-\sum_{j=0}^n c_j{\bf d}_j=\sum_{j=n+1}^{N-1}c_j{\bf d}_j
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1680.png" alt="\begin{displaymath}
+{\bf e}_{n+1}={\bf e}_0+\sum_{j=0}^n\delta_j{\bf d}_j={\bf e...
+... d}_j-\sum_{j=0}^n c_j{\bf d}_j=\sum_{j=n+1}^{N-1}c_j{\bf d}_j
+\end{displaymath}" border="0" width="554" height="61">
+</div>
+<br clear="ALL">
+<p></p>
+We see that as <img src="Conjugate%20gradient%20method_files/img869.png" alt="$n$" border="0" width="16" height="19" align="BOTTOM"> increases from 0 to <img src="Conjugate%20gradient%20method_files/img224.png" alt="$N-1$" border="0" width="54" height="35" align="MIDDLE">, the error is gradually eliminated
+from <img src="Conjugate%20gradient%20method_files/img827.png" alt="${\bf e}_0$" border="0" width="22" height="35" align="MIDDLE"> to <img src="Conjugate%20gradient%20method_files/img1681.png" alt="${\bf e}_N=0$" border="0" width="62" height="35" align="MIDDLE">, one component at a time. After <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> steps, the 
+error is reduced to <!-- MATH
+ ${\bf e}_N={\bf0}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1673.png" alt="${\bf e}_N={\bf0}$" border="0" width="63" height="35" align="MIDDLE"> and the true solution is obtained 
+<!-- MATH
+ ${\bf x}_N={\bf x}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1663.png" alt="${\bf x}_N={\bf x}$" border="0" width="65" height="35" align="MIDDLE">. 
+
+<p>
+The specific A-conjugate search directions <!-- MATH
+ $\{{\bf d}_0,\cdots,{\bf d}_{N-1}\}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1655.png" alt="$\{{\bf d}_0,\cdots,{\bf d}_{N-1}\}$" border="0" width="127" height="39" align="MIDDLE"> 
+satisfying <!-- MATH
+ ${\bf d}_i^T{\bf A}{\bf d}_j=0$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1682.png" alt="${\bf d}_i^T{\bf A}{\bf d}_j=0$" border="0" width="97" height="40" align="MIDDLE"> for any <img src="Conjugate%20gradient%20method_files/img222.png" alt="$i\ne j$" border="0" width="45" height="35" align="MIDDLE">can be constructed 
+by the <a name="tex2html47" href="http://fourier.eng.hmc.edu/e176/lectures/algebra/node2.html">Gram-Schmidt process</a>
+based
+on any set of <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> independent vectors <!-- MATH
+ $\{{\bf v}_0,\cdots,{\bf v}_{N-1}\}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1683.png" alt="$\{{\bf v}_0,\cdots,{\bf v}_{N-1}\}$" border="0" width="126" height="39" align="MIDDLE">, 
+which can be used as the basis to span the space. Specifically, starting from 
+<!-- MATH
+ ${\bf d}_0={\bf v}_0$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1684.png" alt="${\bf d}_0={\bf v}_0$" border="0" width="68" height="35" align="MIDDLE">, we construct each of the subsequent <img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE"> for 
+<img src="Conjugate%20gradient%20method_files/img1685.png" alt="$n&gt;0$" border="0" width="50" height="35" align="MIDDLE"> based on <img src="Conjugate%20gradient%20method_files/img1686.png" alt="${\bf v}_n$" border="0" width="25" height="35" align="MIDDLE">, with all of its components along the previous 
+directions <img src="Conjugate%20gradient%20method_files/img1687.png" alt="${\bf d}_i$" border="0" width="22" height="35" align="MIDDLE"> (<!-- MATH
+ $i=0,\cdots,n-1$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1688.png" alt="$i=0,\cdots,n-1$" border="0" width="131" height="34" align="MIDDLE">) removed:
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}_n={\bf v}_n-\sum_{j=0}^{n-1} {\bf p}_{{\bf d}_j}({\bf v}_n)
+={\bf v}_n-\sum_{j=0}^{n-1} \beta_{nj}{\bf d}_j
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1689.png" alt="\begin{displaymath}
+{\bf d}_n={\bf v}_n-\sum_{j=0}^{n-1} {\bf p}_{{\bf d}_j}({\bf v}_n)
+={\bf v}_n-\sum_{j=0}^{n-1} \beta_{nj}{\bf d}_j
+\end{displaymath}" border="0" width="322" height="60">
+</div>
+<br clear="ALL">
+<p></p>
+where <!-- MATH
+ $\beta_{nj}{\bf d}_j$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1690.png" alt="$\beta_{nj}{\bf d}_j$" border="0" width="49" height="35" align="MIDDLE"> (<img src="Conjugate%20gradient%20method_files/img1691.png" alt="$j&lt;n$" border="0" width="50" height="34" align="MIDDLE">) is the A-projection of <img src="Conjugate%20gradient%20method_files/img1686.png" alt="${\bf v}_n$" border="0" width="25" height="35" align="MIDDLE"> onto 
+<img src="Conjugate%20gradient%20method_files/img1692.png" alt="${\bf d}_j$" border="0" width="23" height="35" align="MIDDLE">. The coefficient <img src="Conjugate%20gradient%20method_files/img1693.png" alt="$\beta_{nj}$" border="0" width="30" height="35" align="MIDDLE"> can be found by pre-multiplying 
+both sides by <!-- MATH
+ ${\bf d}^T_i{\bf A}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1694.png" alt="${\bf d}^T_i{\bf A}$" border="0" width="43" height="40" align="MIDDLE"> with <img src="Conjugate%20gradient%20method_files/img1695.png" alt="$i&lt;n$" border="0" width="47" height="34" align="MIDDLE"> to get:
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}^T_i{\bf A}{\bf d}_n={\bf d}^T_i{\bf A}{\bf v}_n
+-\sum_{j=0}^{n-1} \beta_{nj}{\bf d}^T_i{\bf A}{\bf d}_j 
+={\bf d}^T_i{\bf A}{\bf v}_n-\beta_{ni}{\bf d}^T_i{\bf A}{\bf d}_i=0
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1696.png" alt="\begin{displaymath}
+{\bf d}^T_i{\bf A}{\bf d}_n={\bf d}^T_i{\bf A}{\bf v}_n
+-\su...
+...}^T_i{\bf A}{\bf v}_n-\beta_{ni}{\bf d}^T_i{\bf A}{\bf d}_i=0
+\end{displaymath}" border="0" width="501" height="60">
+</div>
+<br clear="ALL">
+<p></p>
+Solving for <img src="Conjugate%20gradient%20method_files/img1693.png" alt="$\beta_{nj}$" border="0" width="30" height="35" align="MIDDLE"> we get:
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\beta_{nj}=\frac{{\bf d}^T_j{\bf A}{\bf v}_n}{{\bf d}^T_j{\bf A}{\bf d}_j}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1697.png" alt="\begin{displaymath}
+\beta_{nj}=\frac{{\bf d}^T_j{\bf A}{\bf v}_n}{{\bf d}^T_j{\bf A}{\bf d}_j}
+\end{displaymath}" border="0" width="112" height="57">
+</div>
+<br clear="ALL">
+<p></p>
+and the A-projection of <img src="Conjugate%20gradient%20method_files/img1686.png" alt="${\bf v}_n$" border="0" width="25" height="35" align="MIDDLE"> onto <img src="Conjugate%20gradient%20method_files/img1692.png" alt="${\bf d}_j$" border="0" width="23" height="35" align="MIDDLE"> is
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf p}_{{\bf d}_j}({\bf v}_n)=\beta_{nj}{\bf d}_j
+=\left(\frac{{\bf d}^T_j{\bf A}{\bf v}_n}{{\bf d}^T_j{\bf A}{\bf d}_j}\right)
+{\bf d}_j
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1698.png" alt="\begin{displaymath}
+{\bf p}_{{\bf d}_j}({\bf v}_n)=\beta_{nj}{\bf d}_j
+=\left(\f...
+...\bf A}{\bf v}_n}{{\bf d}^T_j{\bf A}{\bf d}_j}\right)
+{\bf d}_j
+\end{displaymath}" border="0" width="266" height="57">
+</div>
+<br clear="ALL">
+<p></p>
+Now the nth direction can be expressed as:
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}_n={\bf v}_n-\sum_{j=0}^{n-1} \beta_{nj}{\bf d}_j
+={\bf v}_n-\sum_{j=0}^{n-1} {\bf p}_{{\bf d}_j}({\bf v}_n)
+={\bf v}_n-\sum_{j=0}^{n-1} \left(\frac{{\bf d}^T_j{\bf A}{\bf v}_n}{{\bf d}^T_j{\bf A}{\bf d}_j}\right)
+{\bf d}_j
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1699.png" alt="\begin{displaymath}
+{\bf d}_n={\bf v}_n-\sum_{j=0}^{n-1} \beta_{nj}{\bf d}_j
+={\...
+...\bf A}{\bf v}_n}{{\bf d}^T_j{\bf A}{\bf d}_j}\right)
+{\bf d}_j
+\end{displaymath}" border="0" width="530" height="60">
+</div>
+<br clear="ALL">
+<p></p>
+
+<p>
+In particular, we could construct the <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> A-orthogonal search directions 
+<img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE"> (<!-- MATH
+ $n=0,\cdots,N-1$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1700.png" alt="$n=0,\cdots,N-1$" border="0" width="142" height="35" align="MIDDLE">) based on the gradient directions 
+<!-- MATH
+ ${\bf v}_n=-{\bf g}_n$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1701.png" alt="${\bf v}_n=-{\bf g}_n$" border="0" width="85" height="35" align="MIDDLE">. The benefit of choosing this particular set of 
+directions is that the computational cost is much reduced as we will see
+later. Premultiplying <!-- MATH
+ ${\bf d}_m^T{\bf A}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1702.png" alt="${\bf d}_m^T{\bf A}$" border="0" width="45" height="40" align="MIDDLE"> with <img src="Conjugate%20gradient%20method_files/img1703.png" alt="$m&lt;n$" border="0" width="57" height="35" align="MIDDLE"> on both sides of 
+<!-- MATH
+ ${\bf e}_n=\sum_{j=n}^{N-1}c_j{\bf d}_j$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1704.png" alt="${\bf e}_n=\sum_{j=n}^{N-1}c_j{\bf d}_j$" border="0" width="133" height="43" align="MIDDLE"> we get:
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}_m^T{\bf A}{\bf e}_n={\bf d}_m^T{\bf g}_n
+  =\sum_{j=n}^{N-1}c_j{\bf d}_m^T{\bf A}{\bf d}_j=0
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1705.png" alt="\begin{displaymath}
+{\bf d}_m^T{\bf A}{\bf e}_n={\bf d}_m^T{\bf g}_n
+=\sum_{j=n}^{N-1}c_j{\bf d}_m^T{\bf A}{\bf d}_j=0
+\end{displaymath}" border="0" width="297" height="61">
+</div>
+<br clear="ALL">
+<p></p>
+We see the <!-- MATH
+ ${\bf d}_m^T{\bf g}_n={\bf g}_n^T{\bf d}_m=0$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1706.png" alt="${\bf d}_m^T{\bf g}_n={\bf g}_n^T{\bf d}_m=0$" border="0" width="155" height="40" align="MIDDLE"> for all <img src="Conjugate%20gradient%20method_files/img1707.png" alt="$n&gt;m$" border="0" width="57" height="35" align="MIDDLE">, i.e.,
+<img src="Conjugate%20gradient%20method_files/img1555.png" alt="${\bf g}_n$" border="0" width="24" height="35" align="MIDDLE"> is orthogonal to all previously traveled directions <img src="Conjugate%20gradient%20method_files/img1708.png" alt="${\bf d}_m$" border="0" width="29" height="35" align="MIDDLE">.
+Now the Gram-Schmidt process can be written as
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}_m={\bf v}_m-\sum_{j=0}^{m-1} \beta_{mj}{\bf d}_j
+  =-{\bf g}_m-\sum_{j=0}^{m-1} \beta_{mj}{\bf d}_j
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1709.png" alt="\begin{displaymath}
+{\bf d}_m={\bf v}_m-\sum_{j=0}^{m-1} \beta_{mj}{\bf d}_j
+=-{\bf g}_m-\sum_{j=0}^{m-1} \beta_{mj}{\bf d}_j
+\end{displaymath}" border="0" width="345" height="60">
+</div>
+<br clear="ALL">
+<p></p>
+where
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\beta_{mj}=\frac{{\bf d}_i^T{\bf A}{\bf v}_m}{{\bf d}^T_i{\bf A}{\bf d}_i}
+=-\frac{{\bf d}_i^T{\bf A}{\bf g}_m}{{\bf d}^T_i{\bf A}{\bf d}_i}\;\;\;\;\;\;(m>j)
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1710.png" alt="\begin{displaymath}
+\beta_{mj}=\frac{{\bf d}_i^T{\bf A}{\bf v}_m}{{\bf d}^T_i{\b...
+...\bf A}{\bf g}_m}{{\bf d}^T_i{\bf A}{\bf d}_i}\;\;\;\;\;\;(m&gt;j)
+\end{displaymath}" border="0" width="322" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+Premultiplying <img src="Conjugate%20gradient%20method_files/img1711.png" alt="${\bf g}_n^T$" border="0" width="26" height="40" align="MIDDLE"> (<img src="Conjugate%20gradient%20method_files/img1712.png" alt="$n\ge m$" border="0" width="57" height="35" align="MIDDLE">) on both sides we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf g}_n^T{\bf d}_m=-{\bf g}_n^T{\bf g}_m-\sum_{j=0}^{m-1} \beta_{nj}{\bf g}_n^T{\bf d}_j 
+  =-{\bf g}_m^T{\bf g}_n=\left\{\begin{array}{cc}-||{\bf g}_n||^2&m=n\\
+  0&m<n\end{array}\right.
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1713.png" alt="\begin{displaymath}
+{\bf g}_n^T{\bf d}_m=-{\bf g}_n^T{\bf g}_m-\sum_{j=0}^{m-1}...
+...vert\vert{\bf g}_n\vert\vert^2&amp;m=n\\
+0&amp;m&lt;n\end{array}\right.
+\end{displaymath}" border="0" width="515" height="60">
+</div>
+<br clear="ALL">
+<p></p>
+Note that all terms in the summation are zero as <!-- MATH
+ ${\bf g}_n^T{\bf d}_j=0$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1714.png" alt="${\bf g}_n^T{\bf d}_j=0$" border="0" width="80" height="40" align="MIDDLE"> for 
+all <img src="Conjugate%20gradient%20method_files/img1715.png" alt="$j&lt;m\le n$" border="0" width="91" height="34" align="MIDDLE">. Substituting <!-- MATH
+ ${\bf g}_n^T{\bf d}_n=-||{\bf g}_n||^2$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1716.png" alt="${\bf g}_n^T{\bf d}_n=-\vert\vert{\bf g}_n\vert\vert^2$" border="0" width="136" height="40" align="MIDDLE"> into
+the expression for the step size <img src="Conjugate%20gradient%20method_files/img1585.png" alt="$\delta_n$" border="0" width="22" height="35" align="MIDDLE">, we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\delta_n=-\frac{{\bf g}_n^T{\bf d}_n}{{\bf d}_n^T{\bf A}{\bf d}_n}
+=\frac{||{\bf g}_n||^2}{{\bf d}_n^T{\bf A}{\bf d}_n}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1717.png" alt="\begin{displaymath}
+\delta_n=-\frac{{\bf g}_n^T{\bf d}_n}{{\bf d}_n^T{\bf A}{\bf...
+...\vert\vert{\bf g}_n\vert\vert^2}{{\bf d}_n^T{\bf A}{\bf d}_n}
+\end{displaymath}" border="0" width="208" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+Next we consider
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf g}_{m+1}={\bf A}{\bf x}_{m+1}-{\bf b}
+  ={\bf A}({\bf x}_m+\delta_m{\bf d}_m)-{\bf b}
+  =({\bf A}{\bf x}_m-{\bf b})+\delta_m{\bf A}{\bf d}_m
+  ={\bf g}_m+\delta_m{\bf A}{\bf d}_m
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1718.png" alt="\begin{displaymath}
+{\bf g}_{m+1}={\bf A}{\bf x}_{m+1}-{\bf b}
+={\bf A}({\bf x...
+...+\delta_m{\bf A}{\bf d}_m
+={\bf g}_m+\delta_m{\bf A}{\bf d}_m
+\end{displaymath}" border="0" width="625" height="33">
+</div>
+<br clear="ALL">
+<p></p>
+Premultiplying <img src="Conjugate%20gradient%20method_files/img1711.png" alt="${\bf g}_n^T$" border="0" width="26" height="40" align="MIDDLE"> on both sides we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf g}_n^T{\bf g}_{m+1}={\bf g}_n^T{\bf g}_m+\delta_m{\bf g}_n^T{\bf A}{\bf d}_m
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1719.png" alt="\begin{displaymath}
+{\bf g}_n^T{\bf g}_{m+1}={\bf g}_n^T{\bf g}_m+\delta_m{\bf g}_n^T{\bf A}{\bf d}_m
+\end{displaymath}" border="0" width="238" height="33">
+</div>
+<br clear="ALL">
+<p></p>
+Solving for <!-- MATH
+ ${\bf g}_n^T{\bf A}{\bf d}_m$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1720.png" alt="${\bf g}_n^T{\bf A}{\bf d}_m$" border="0" width="67" height="40" align="MIDDLE"> we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf g}_n^T{\bf A}{\bf d}_m
+  =\frac{1}{\delta_m}\left( {\bf g}_n^T{\bf g}_{m+1}-{\bf g}_n^T{\bf g}_m\right)
+  =\left\{\begin{array}{cl}-||{\bf g}_n||^2/\delta_n&m=n\\
+  ||{\bf g}_n||^2/\delta_{n-1}&m=n-1\\0&m<n-1\end{array}\right.
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1721.png" alt="\begin{displaymath}
+{\bf g}_n^T{\bf A}{\bf d}_m
+=\frac{1}{\delta_m}\left( {\bf...
+...}_n\vert\vert^2/\delta_{n-1}&amp;m=n-1 0&amp;m&lt;n-1\end{array}\right.
+\end{displaymath}" border="0" width="506" height="76">
+</div>
+<br clear="ALL">
+<p></p>
+Finally the mth coefficient in the Gram-Schmidt process for <img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE"> (<img src="Conjugate%20gradient%20method_files/img1703.png" alt="$m&lt;n$" border="0" width="57" height="35" align="MIDDLE">)
+can be written as 
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\beta_{nm}=-\frac{{\bf d}_m^T{\bf A}{\bf g}_n}{{\bf d}^T_m{\bf A}{\bf d}_m}
+=\frac{1}{{\bf d}_{n-1}^T{\bf A}{\bf d}_{n-1}}
+\;\left\{\begin{array}{cl}-||{\bf g}_n||^2/\delta_{n-1}&m=n-1\\0&m<n-1\end{array}\right.
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1722.png" alt="\begin{displaymath}
+\beta_{nm}=-\frac{{\bf d}_m^T{\bf A}{\bf g}_n}{{\bf d}^T_m{\...
+...}_n\vert\vert^2/\delta_{n-1}&amp;m=n-1 0&amp;m&lt;n-1\end{array}\right.
+\end{displaymath}" border="0" width="499" height="55">
+</div>
+<br clear="ALL">
+<p></p>
+Note that <img src="Conjugate%20gradient%20method_files/img1723.png" alt="$\beta_{nm}=0$" border="0" width="71" height="35" align="MIDDLE"> except when <img src="Conjugate%20gradient%20method_files/img1724.png" alt="$m=n-1$" border="0" width="90" height="35" align="MIDDLE">, i.e., there is only one non-zero
+term left in the summation of the update formula for <img src="Conjugate%20gradient%20method_files/img1567.png" alt="${\bf d}_n$" border="0" width="25" height="35" align="MIDDLE">. 
+This is the reason why we choose <!-- MATH
+ ${\bf v}_n=-{\bf g}_n$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1701.png" alt="${\bf v}_n=-{\bf g}_n$" border="0" width="85" height="35" align="MIDDLE">. We can now drop the second 
+subscript <img src="Conjugate%20gradient%20method_files/img883.png" alt="$m$" border="0" width="21" height="19" align="BOTTOM"> in <img src="Conjugate%20gradient%20method_files/img1725.png" alt="$\beta_{nm}$" border="0" width="36" height="35" align="MIDDLE">. Substituting the step size 
+<!-- MATH
+ $\delta_{n-1}=||{\bf g}_{n-1}||^2/{\bf d}_{n-1}^T{\bf A}{\bf d}_{n-1}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1726.png" alt="$\delta_{n-1}=\vert\vert{\bf g}_{n-1}\vert\vert^2/{\bf d}_{n-1}^T{\bf A}{\bf d}_{n-1}$" border="0" width="232" height="40" align="MIDDLE"> obtained above 
+into the expression for <!-- MATH
+ $\beta_{nm}=\beta_m$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1727.png" alt="$\beta_{nm}=\beta_m$" border="0" width="84" height="35" align="MIDDLE"> we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\beta_n=-\frac{||{\bf g}_n||^2}{||{\bf g}_{n-1}||^2}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1728.png" alt="\begin{displaymath}\beta_n=-\frac{\vert\vert{\bf g}_n\vert\vert^2}{\vert\vert{\bf g}_{n-1}\vert\vert^2} \end{displaymath}" border="0" width="127" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+
+<p>
+In summary here is the conjugate gradient algorithm (note <!-- MATH
+ ${\bf g}_n=-{\bf r}_n$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1729.png" alt="${\bf g}_n=-{\bf r}_n$" border="0" width="82" height="35" align="MIDDLE">):
+
+</p><ol>
+<li>Set <img src="Conjugate%20gradient%20method_files/img1730.png" alt="$n=0$" border="0" width="50" height="19" align="BOTTOM"> and initialize the search direction (same as gradient descent):
+  <br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}_0={\bf r}_0=-{\bf g}_0={\bf b}-{\bf A}{\bf x}_0
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1731.png" alt="\begin{displaymath}{\bf d}_0={\bf r}_0=-{\bf g}_0={\bf b}-{\bf A}{\bf x}_0 \end{displaymath}" border="0" width="214" height="32">
+</div>
+<br clear="ALL">
+<p></p>
+</li>
+<li>Termination check: if the error <!-- MATH
+ $||{\bf r}_n||^2$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1732.png" alt="$\vert\vert{\bf r}_n\vert\vert^2$" border="0" width="51" height="39" align="MIDDLE"> is smaller than a 
+  preset threshold, stop. Otherwise, find step size:
+  <br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\delta_n=\frac{||{\bf g}_n||^2}{{\bf d}_n^T{\bf A}{\bf d}_n}
+  =\frac{||{\bf r}_n||^2}{{\bf d}_n^T{\bf A}{\bf d}_n}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1733.png" alt="\begin{displaymath}\delta_n=\frac{\vert\vert{\bf g}_n\vert\vert^2}{{\bf d}_n^T{\...
+...\vert\vert{\bf r}_n\vert\vert^2}{{\bf d}_n^T{\bf A}{\bf d}_n}
+\end{displaymath}" border="0" width="193" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+</li>
+<li>Step forward:
+  <br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf x}_{n+1}={\bf x}_n+\delta_n{\bf d}_n
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1734.png" alt="\begin{displaymath}{\bf x}_{n+1}={\bf x}_n+\delta_n{\bf d}_n \end{displaymath}" border="0" width="144" height="32">
+</div>
+<br clear="ALL">
+<p></p>
+</li>
+<li>Update gradient:
+  <br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf g}_{n+1}={\bf g}_n+\delta_n{\bf A}{\bf d}_n
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1735.png" alt="\begin{displaymath}{\bf g}_{n+1}={\bf g}_n+\delta_n{\bf A}{\bf d}_n \end{displaymath}" border="0" width="158" height="32">
+</div>
+<br clear="ALL">
+<p></p>
+</li>
+<li>Find coefficient for Gram-Schmidt process:
+  <br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\beta_{n+1}=-\frac{||{\bf g}_{n+1}||^2}{||{\bf g}_n||^2} 
+  =-\frac{||{\bf r}_{n+1}||^2}{||{\bf r}_n||^2}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1736.png" alt="\begin{displaymath}\beta_{n+1}=-\frac{\vert\vert{\bf g}_{n+1}\vert\vert^2}{\vert...
+...ert{\bf r}_{n+1}\vert\vert^2}{\vert\vert{\bf r}_n\vert\vert^2} \end{displaymath}" border="0" width="252" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+</li>
+<li>Update search direction:
+  <br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}_{n+1}=-{\bf g}_{n+1}-\beta_{n+1}{\bf d}_n 
+  ={\bf r}_{n+1}-\beta_{n+1}{\bf d}_n
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1737.png" alt="\begin{displaymath}{\bf d}_{n+1}=-{\bf g}_{n+1}-\beta_{n+1}{\bf d}_n
+={\bf r}_{n+1}-\beta_{n+1}{\bf d}_n \end{displaymath}" border="0" width="336" height="32">
+</div>
+<br clear="ALL">
+<p></p>
+Set <img src="Conjugate%20gradient%20method_files/img1738.png" alt="$n=n+1$" border="0" width="84" height="35" align="MIDDLE"> and go back to step 2.
+</li>
+</ol>
+
+<p>
+The algorithm above assumes the objective function <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> to be quadratic 
+with known <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM">. However, when <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> is not quadratic and <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM"> 
+is not available, the algorithm can be modified so that it does not depend on 
+<img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM">, by the following two methods.
+
+</p><p>
+
+</p><ul>
+<li>In step 2 above, the optimal step size <img src="Conjugate%20gradient%20method_files/img1585.png" alt="$\delta_n$" border="0" width="22" height="35" align="MIDDLE"> is calculated based 
+  on <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM">. But it can also be found by line minimization based on any 
+  suitable algorithms for 1-D optimization. In step 4, the gradient <img src="Conjugate%20gradient%20method_files/img1595.png" alt="${\bf g}_{n+1}$" border="0" width="42" height="35" align="MIDDLE">
+  is calculated based on <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM">, but it can also be computed locally at 
+  <!-- MATH
+ ${\bf x}_{n+1}={\bf x}_n+\delta_n{\bf d}_n$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1584.png" alt="${\bf x}_{n+1}={\bf x}_n+\delta_n{\bf d}_n$" border="0" width="149" height="35" align="MIDDLE">, once it is made available in step 3.
+</li>
+<li>If the Hessian matrix <img src="Conjugate%20gradient%20method_files/img1539.png" alt="${\bf H}$" border="0" width="21" height="20" align="BOTTOM"> of the objective function <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE">
+  can be made available, it can be used to approximate <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM"> so that the 
+  optimal step size <img src="Conjugate%20gradient%20method_files/img1303.png" alt="$\delta$" border="0" width="13" height="20" align="BOTTOM"> can still be obtained without the iterative 1-D 
+  line optimization. Although this method may result in more iterations, it
+  avoids the 1-D optimization, which may be time consuming.
+</li>
+</ul>
+
+<p>
+In the figure below, the conjugate gradient method is compared with the gradient 
+descent method for the case of <img src="Conjugate%20gradient%20method_files/img1360.png" alt="$N=2$" border="0" width="56" height="16" align="BOTTOM">. We see that the first search direction is
+the same <img src="Conjugate%20gradient%20method_files/img1739.png" alt="$-{\bf g}_0$" border="0" width="38" height="35" align="MIDDLE"> for both methods. However, the next direction <img src="Conjugate%20gradient%20method_files/img1740.png" alt="${\bf d}_1$" border="0" width="24" height="35" align="MIDDLE"> 
+is A-orthogonal to <img src="Conjugate%20gradient%20method_files/img1741.png" alt="${\bf d}_0$" border="0" width="24" height="35" align="MIDDLE">, same as the next error <img src="Conjugate%20gradient%20method_files/img1742.png" alt="${\bf e}_1$" border="0" width="22" height="35" align="MIDDLE">, different from
+the search direction <img src="Conjugate%20gradient%20method_files/img1743.png" alt="$-{\bf g}_1$" border="0" width="38" height="35" align="MIDDLE"> in gradient descent method. The conjugate gradient
+method finds the solution <img src="Conjugate%20gradient%20method_files/img61.png" alt="${\bf x}$" border="0" width="16" height="19" align="BOTTOM"> in <img src="Conjugate%20gradient%20method_files/img1360.png" alt="$N=2$" border="0" width="56" height="16" align="BOTTOM"> steps, while the gradient descent 
+method has to go through many more steps all orthogonal to each other before it 
+finds the solution.
+
+</p><p>
+<img src="Conjugate%20gradient%20method_files/ConjugateGradient.png" alt="ConjugateGradient.png" border="0" width="753" height="517" align="BOTTOM">
+
+</p><p>
+Now we relax the requirement that the function <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> be quadratic, but we 
+still assume that it can be approximated as a quadratic function near its minimum.
+In this case, the update of the search direction, or specifically the coefficient
+<img src="Conjugate%20gradient%20method_files/img1744.png" alt="$\beta_{n+1}$" border="0" width="41" height="35" align="MIDDLE">, which is derived based on the assumption that <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> is 
+quadratic,  may no longer be valid. Some alternative formulas for <img src="Conjugate%20gradient%20method_files/img1744.png" alt="$\beta_{n+1}$" border="0" width="41" height="35" align="MIDDLE">,
+can be used:
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+\beta_{n+1}=\frac{{\bf g}^T_{n+1}({\bf g}_{n+1}-{\bf g}_n)}{||{\bf g}_n||^2}
+\;\;\;\;\;\mbox{or}\;\;\;\;\;
+\beta_{n+1}=-\frac{{\bf g}^T_{n+1}({\bf g}_{n+1}-{\bf g}_n)}{ {\bf d}_n^T({\bf g}_{n+1}-{\bf g}_n)}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1745.png" alt="\begin{displaymath}
+\beta_{n+1}=\frac{{\bf g}^T_{n+1}({\bf g}_{n+1}-{\bf g}_n)}{...
+...f g}_{n+1}-{\bf g}_n)}{ {\bf d}_n^T({\bf g}_{n+1}-{\bf g}_n)}
+\end{displaymath}" border="0" width="478" height="53">
+</div>
+<br clear="ALL">
+<p></p>
+These expressions are identical to <!-- MATH
+ $\beta_{n+1}=||{\bf g}_{n+1}||^2/||{\bf g}_n||^2$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1746.png" alt="$\beta_{n+1}=\vert\vert{\bf g}_{n+1}\vert\vert^2/\vert\vert{\bf g}_n\vert\vert^2$" border="0" width="190" height="39" align="MIDDLE">
+when <img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"> is indeed quadratic. Note that it is now possible for <img src="Conjugate%20gradient%20method_files/img1747.png" alt="$\beta_{n+1}&lt;0$" border="0" width="76" height="35" align="MIDDLE">.
+If this happens to be the case, we will use <img src="Conjugate%20gradient%20method_files/img1748.png" alt="$\beta_{n+1}=0$" border="0" width="76" height="35" align="MIDDLE">, i.e., the next search
+direction is simply <!-- MATH
+ ${\bf d}_{n+1}=-{\bf g}_n-\beta_n{\bf d}_n=-{\bf g}_n$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1749.png" alt="${\bf d}_{n+1}=-{\bf g}_n-\beta_n{\bf d}_n=-{\bf g}_n$" border="0" width="226" height="35" align="MIDDLE">, same
+as the gradient descent method.
+
+<p>
+<b>Example</b> To compare the conjugate method and the gradient descent method,
+consider a very simple 2-D quadratic function
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+f(x,y)={\bf x}^T{\bf A}{\bf x}
+=[x_1,\,x_2]\left[\begin{array}{cc}3&1\\1&2\end{array}\right]
+\left[\begin{array}{c}x_1\\x_2\end{array}\right]
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1750.png" alt="\begin{displaymath}
+f(x,y)={\bf x}^T{\bf A}{\bf x}
+=[x_1, x_2]\left[\begin{arra...
+...rray}\right]
+\left[\begin{array}{c}x_1 x_2\end{array}\right]
+\end{displaymath}" border="0" width="336" height="55">
+</div>
+<br clear="ALL">
+<p></p>
+The performance of the gradient descent method depends significantly on
+the initial guess. For the specific initial guess of <!-- MATH
+ ${\bf x}_0=[1.5,\;-0.75]^T$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1751.png" alt="${\bf x}_0=[1.5,\;-0.75]^T$" border="0" width="155" height="40" align="MIDDLE">,
+the iteration gets into a zigzag pattern and the converge is very slow,
+as shown in the table below.
+
+<p>
+<table cellpadding="3" border="1">
+<tbody><tr><td align="CENTER">n</td>
+<td align="CENTER"><!-- MATH
+ ${\bf x}=[x_1,\,x_2]$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1752.png" alt="${\bf x}=[x_1, x_2]$" border="0" width="99" height="39" align="MIDDLE"></td>
+<td align="CENTER"><img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"></td>
+</tr>
+<tr><td align="CENTER">0</td>
+<td align="CENTER">1.500000, -0.750000</td>
+<td align="CENTER">2.812500</td>
+</tr>
+<tr><td align="CENTER">1</td>
+<td align="CENTER">0.250000, -0.750000</td>
+<td align="CENTER">0.468750e-01</td>
+</tr>
+<tr><td align="CENTER">2</td>
+<td align="CENTER">0.250000, -0.125000</td>
+<td align="CENTER">7.812500e-02</td>
+</tr>
+<tr><td align="CENTER">3</td>
+<td align="CENTER">0.041667, -0.125000</td>
+<td align="CENTER">1.302083e-02</td>
+</tr>
+<tr><td align="CENTER">4</td>
+<td align="CENTER">0.041667, -0.020833</td>
+<td align="CENTER">2.170139e-03</td>
+</tr>
+<tr><td align="CENTER">5</td>
+<td align="CENTER">0.006944, -0.020833</td>
+<td align="CENTER">3.616898e-04</td>
+</tr>
+<tr><td align="CENTER">6</td>
+<td align="CENTER">0.006944, -0.003472</td>
+<td align="CENTER">6.028164e-05</td>
+</tr>
+<tr><td align="CENTER">7</td>
+<td align="CENTER">0.001157, -0.003472</td>
+<td align="CENTER">1.004694e-05</td>
+</tr>
+<tr><td align="CENTER">8</td>
+<td align="CENTER">0.001157, -0.000579</td>
+<td align="CENTER">1.674490e-06</td>
+</tr>
+<tr><td align="CENTER">9</td>
+<td align="CENTER">0.000193, -0.000579</td>
+<td align="CENTER">2.790816e-07</td>
+</tr>
+<tr><td align="CENTER">10</td>
+<td align="CENTER">0.000193, -0.000096</td>
+<td align="CENTER">4.651361e-08</td>
+</tr>
+<tr><td align="CENTER">11</td>
+<td align="CENTER">0.000032, -0.000096</td>
+<td align="CENTER">7.752268e-09</td>
+</tr>
+<tr><td align="CENTER">12</td>
+<td align="CENTER">0.000032, -0.000016</td>
+<td align="CENTER">1.292045e-09</td>
+</tr>
+<tr><td align="CENTER">13</td>
+<td align="CENTER">0.000005, -0.000016</td>
+<td align="CENTER">2.153408e-10</td>
+</tr>
+</tbody></table>
+
+</p><p>
+However, as expected, the conjugate gradient method takes exactly
+<img src="Conjugate%20gradient%20method_files/img1360.png" alt="$N=2$" border="0" width="56" height="16" align="BOTTOM"> steps from any initial guess to reach at the solution, as
+shown below.
+
+</p><p>
+<table cellpadding="3" border="1">
+<tbody><tr><td align="CENTER">n</td>
+<td align="CENTER"><!-- MATH
+ ${\bf x}=[x_1,\,x_2]$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1752.png" alt="${\bf x}=[x_1, x_2]$" border="0" width="99" height="39" align="MIDDLE"></td>
+<td align="CENTER"><img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"></td>
+</tr>
+<tr><td align="CENTER">0</td>
+<td align="CENTER">1.500000, -0.750000</td>
+<td align="CENTER">2.812500e+00</td>
+</tr>
+<tr><td align="CENTER">1</td>
+<td align="CENTER">0.250000, -0.750000</td>
+<td align="CENTER">4.687500e-01</td>
+</tr>
+<tr><td align="CENTER">2</td>
+<td align="CENTER">0.000000, -0.000000</td>
+<td align="CENTER">1.155558e-33</td>
+</tr>
+</tbody></table>
+
+</p><p>
+<img src="Conjugate%20gradient%20method_files/GDvsCG1.png" alt="GDvsCG1.png" border="0" width="956" height="474" align="BOTTOM">
+
+</p><p>
+For an <img src="Conjugate%20gradient%20method_files/img1753.png" alt="$N=3$" border="0" width="56" height="17" align="BOTTOM"> example of <!-- MATH
+ $f({\bf x})={\bf x}^T{\bf A}{\bf x}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1754.png" alt="$f({\bf x})={\bf x}^T{\bf A}{\bf x}$" border="0" width="116" height="40" align="MIDDLE"> with
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf A}=\left[\begin{array}{ccc}5 & 3 & 1\\3 & 4 & 2\\1 & 2 & 3\end{array}
+\right]
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1755.png" alt="\begin{displaymath}
+{\bf A}=\left[\begin{array}{ccc}5 &amp; 3 &amp; 1 3 &amp; 4 &amp; 2 1 &amp; 2 &amp; 3\end{array}\right]
+\end{displaymath}" border="0" width="134" height="76">
+</div>
+<br clear="ALL">
+<p></p>
+from an initial guess <!-- MATH
+ ${\bf x}_0=[1,\;2,\;3]^T$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1397.png" alt="${\bf x}_0=[1,\;2,\;3]^T$" border="0" width="125" height="40" align="MIDDLE">, it takes the gradient 
+descent method 36 iterations to reach <!-- MATH
+ ${\bf x}_{36}=[0.000017,\;-0.000020,\;0.000018]^T$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1756.png" alt="${\bf x}_{36}=[0.000017,\;-0.000020,\;0.000018]^T$" border="0" width="330" height="40" align="MIDDLE"> corresponding to <!-- MATH
+ $f({\bf x})=6.002596\times 10^{-10}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1757.png" alt="$f({\bf x})=6.002596\times 10^{-10}$" border="0" width="204" height="39" align="MIDDLE">. From the same
+initial guess, it takes the conjugate gradient method only <img src="Conjugate%20gradient%20method_files/img1753.png" alt="$N=3$" border="0" width="56" height="17" align="BOTTOM"> iterations
+to converge to the solution:
+
+<p>
+<table cellpadding="3" border="1">
+<tbody><tr><td align="CENTER">n</td>
+<td align="RIGHT"><!-- MATH
+ ${\bf x}=[x_1,\,x_2,\,x_3]$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1758.png" alt="${\bf x}=[x_1, x_2, x_3]$" border="0" width="129" height="39" align="MIDDLE"></td>
+<td align="CENTER"><img src="Conjugate%20gradient%20method_files/img1436.png" alt="$f({\bf x})$" border="0" width="42" height="39" align="MIDDLE"></td>
+</tr>
+<tr><td align="CENTER">0</td>
+<td align="RIGHT">1.000000,  2.000000, 3.000000</td>
+<td align="CENTER">4.500000e+01</td>
+</tr>
+<tr><td align="CENTER">1</td>
+<td align="RIGHT">-0.734716, -0.106441, 1.265284</td>
+<td align="CENTER">2.809225e+00</td>
+</tr>
+<tr><td align="CENTER">2</td>
+<td align="RIGHT">0.123437, -0.209498, 0.136074</td>
+<td align="CENTER">3.584736e-02</td>
+</tr>
+<tr><td align="CENTER">3</td>
+<td align="RIGHT">-0.000000,  0.000000, 0.000000</td>
+<td align="CENTER">3.949119e-31</td>
+</tr>
+</tbody></table>
+
+</p><p>
+<b>Conjugate gradient method used for solving linear equation systems:</b>
+
+</p><p>
+As discussed before, if <img src="Conjugate%20gradient%20method_files/img61.png" alt="${\bf x}$" border="0" width="16" height="19" align="BOTTOM"> is the solution that minimizes the 
+quadratic function <!-- MATH
+ $f({\bf x})={\bf x}^T{\bf A}{\bf x}/2-{\bf b}^T{\bf x}+c$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1759.png" alt="$f({\bf x})={\bf x}^T{\bf A}{\bf x}/2-{\bf b}^T{\bf x}+c$" border="0" width="223" height="40" align="MIDDLE">, 
+with <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM"> being symmetric and positive definite, it also satisfies
+<!-- MATH
+ $d\,f({\bf x})/d{\bf x}={\bf A}{\bf x}-{\bf b}={\bf0}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1760.png" alt="$d f({\bf x})/d{\bf x}={\bf A}{\bf x}-{\bf b}={\bf0}$" border="0" width="209" height="39" align="MIDDLE">. In other words, the 
+optimization problem is equivalent to the problem of solving the linear system 
+<!-- MATH
+ ${\bf A}{\bf x}-{\bf b}={\bf0}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1761.png" alt="${\bf A}{\bf x}-{\bf b}={\bf0}$" border="0" width="103" height="35" align="MIDDLE">, both can be solved by the conjugate gradient 
+method.
+
+</p><p>
+Now consider solving the linear system <!-- MATH
+ ${\bf A}{\bf x}={\bf b}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img135.png" alt="${\bf A}{\bf x}={\bf b}$" border="0" width="69" height="20" align="BOTTOM"> with 
+<!-- MATH
+ ${\bf A}={\bf A}^T$
+ -->
+<img src="Conjugate%20gradient%20method_files/img919.png" alt="${\bf A}={\bf A}^T$" border="0" width="73" height="19" align="BOTTOM">. Let <img src="Conjugate%20gradient%20method_files/img1687.png" alt="${\bf d}_i$" border="0" width="22" height="35" align="MIDDLE"> (<img src="Conjugate%20gradient%20method_files/img233.png" alt="$i=1,\cdots,N$" border="0" width="105" height="35" align="MIDDLE">) be a set of <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> 
+A-orthogonal vectors satisfying <!-- MATH
+ ${\bf d}_i^T{\bf A}{\bf d}_j=0$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1682.png" alt="${\bf d}_i^T{\bf A}{\bf d}_j=0$" border="0" width="97" height="40" align="MIDDLE"> for <img src="Conjugate%20gradient%20method_files/img222.png" alt="$i\ne j$" border="0" width="45" height="35" align="MIDDLE">. 
+The solution <img src="Conjugate%20gradient%20method_files/img61.png" alt="${\bf x}$" border="0" width="16" height="19" align="BOTTOM"> of the equation <!-- MATH
+ ${\bf A}{\bf x}={\bf b}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img135.png" alt="${\bf A}{\bf x}={\bf b}$" border="0" width="69" height="20" align="BOTTOM"> can be
+represented by these <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> vectors as
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf x}=\sum_{i=1}^N c_i{\bf d}_i
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1762.png" alt="\begin{displaymath}
+{\bf x}=\sum_{i=1}^N c_i{\bf d}_i
+\end{displaymath}" border="0" width="92" height="58">
+</div>
+<br clear="ALL">
+<p></p>
+Now we have
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf b}={\bf A}{\bf x}={\bf A}\left[\sum_{i=1}^N c_i{\bf d}_i\right]
+=\sum_{i=1}^N c_i{\bf A}{\bf d}_i
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1763.png" alt="\begin{displaymath}
+{\bf b}={\bf A}{\bf x}={\bf A}\left[\sum_{i=1}^N c_i{\bf d}_i\right]
+=\sum_{i=1}^N c_i{\bf A}{\bf d}_i
+\end{displaymath}" border="0" width="282" height="58">
+</div>
+<br clear="ALL">
+<p></p>
+Premultiplying <img src="Conjugate%20gradient%20method_files/img1764.png" alt="${\bf d}_j^T$" border="0" width="27" height="40" align="MIDDLE"> on both sides we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf d}_j^T{\bf b}=\sum_{i=1}^N c_i{\bf d}_j^T{\bf A}{\bf d}_i=c_j{\bf d}_j^T{\bf A}{\bf d}_j
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1765.png" alt="\begin{displaymath}
+{\bf d}_j^T{\bf b}=\sum_{i=1}^N c_i{\bf d}_j^T{\bf A}{\bf d}_i=c_j{\bf d}_j^T{\bf A}{\bf d}_j
+\end{displaymath}" border="0" width="252" height="58">
+</div>
+<br clear="ALL">
+<p></p>
+Solving for <img src="Conjugate%20gradient%20method_files/img1766.png" alt="$c_j$" border="0" width="20" height="35" align="MIDDLE"> we get
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+c_j=\frac{{\bf d}_j^T{\bf b}}{{\bf d}_j^T{\bf A}{\bf d}_j}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1767.png" alt="\begin{displaymath}
+c_j=\frac{{\bf d}_j^T{\bf b}}{{\bf d}_j^T{\bf A}{\bf d}_j}
+\end{displaymath}" border="0" width="100" height="57">
+</div>
+<br clear="ALL">
+<p></p>
+Substituting this back to the expression for <img src="Conjugate%20gradient%20method_files/img61.png" alt="${\bf x}$" border="0" width="16" height="19" align="BOTTOM"> we get the solution
+of the equation:
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf x}=\sum_{i=1}^N c_i{\bf d}_i
+  =\sum_{i=1}^N \left(\frac{{\bf d}_i^T{\bf b}}{{\bf d}_i^T{\bf A}{\bf d}_i}\right)
+  {\bf d}_i
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1768.png" alt="\begin{displaymath}
+{\bf x}=\sum_{i=1}^N c_i{\bf d}_i
+=\sum_{i=1}^N \left(\fra...
+... d}_i^T{\bf b}}{{\bf d}_i^T{\bf A}{\bf d}_i}\right)
+{\bf d}_i
+\end{displaymath}" border="0" width="249" height="58">
+</div>
+<br clear="ALL">
+<p></p>
+Also note that as <!-- MATH
+ ${\bf b}={\bf A}{\bf x}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img1769.png" alt="${\bf b}={\bf A}{\bf x}$" border="0" width="69" height="20" align="BOTTOM">, the ith term of the summation above
+is simply the A-projection of <img src="Conjugate%20gradient%20method_files/img61.png" alt="${\bf x}$" border="0" width="16" height="19" align="BOTTOM"> onto the ith direction <img src="Conjugate%20gradient%20method_files/img1687.png" alt="${\bf d}_i$" border="0" width="22" height="35" align="MIDDLE">:
+<br><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf p}_{{\bf d}_i}({\bf x})
+=\left(\frac{{\bf d}_i^T{\bf A}{\bf b}}{{\bf d}_i^T{\bf A}{\bf d}_i}\right){\bf d}_i
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img1770.png" alt="\begin{displaymath}
+{\bf p}_{{\bf d}_i}({\bf x})
+=\left(\frac{{\bf d}_i^T{\bf A}{\bf b}}{{\bf d}_i^T{\bf A}{\bf d}_i}\right){\bf d}_i
+\end{displaymath}" border="0" width="182" height="55">
+</div>
+<br clear="ALL">
+<p></p>
+
+<p>
+One application of the conjugate gradient method is to solve the normal equation
+to find the least-square solution of an over-constrained equation system
+<!-- MATH
+ ${\bf A}{\bf x}={\bf b}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img135.png" alt="${\bf A}{\bf x}={\bf b}$" border="0" width="69" height="20" align="BOTTOM">, where the coefficient matrix <img src="Conjugate%20gradient%20method_files/img70.png" alt="${\bf A}$" border="0" width="21" height="20" align="BOTTOM"> is <img src="Conjugate%20gradient%20method_files/img58.png" alt="$M$" border="0" width="25" height="16" align="BOTTOM"> by <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> 
+of rank <img src="Conjugate%20gradient%20method_files/img413.png" alt="$R$" border="0" width="19" height="17" align="BOTTOM">, i.e., <img src="Conjugate%20gradient%20method_files/img572.png" alt="$M&gt;N=R$" border="0" width="106" height="35" align="MIDDLE">. As discussed previously, the normal equation of this 
+system is
+<br></p><p></p>
+<div align="CENTER">
+<!-- MATH
+ \begin{displaymath}
+{\bf A}^T{\bf A}{\bf x}={\bf A}^T{\bf b}
+\end{displaymath}
+ -->
+
+<img src="Conjugate%20gradient%20method_files/img991.png" alt="\begin{displaymath}{\bf A}^T{\bf A}{\bf x}={\bf A}^T{\bf b} \end{displaymath}" border="0" width="118" height="28">
+</div>
+<br clear="ALL">
+<p></p>
+Here <!-- MATH
+ ${\bf A}^T{\bf A}$
+ -->
+<img src="Conjugate%20gradient%20method_files/img600.png" alt="${\bf A}^T{\bf A}$" border="0" width="47" height="19" align="BOTTOM"> is an <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> by <img src="Conjugate%20gradient%20method_files/img57.png" alt="$N$" border="0" width="21" height="16" align="BOTTOM"> symmetric, positive definite matrix.
+This normal equation can be solved by the conjugate gradient method.
+
+<p>
+</p><hr>
+<!--Navigation Panel-->
+<a name="tex2html419" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node30.html">
+<img alt="next" src="Conjugate%20gradient%20method_files/next.png" border="0" width="37" height="24" align="BOTTOM"></a> 
+<a name="tex2html417" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node22.html">
+<img alt="up" src="Conjugate%20gradient%20method_files/up.png" border="0" width="26" height="24" align="BOTTOM"></a> 
+<a name="tex2html411" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node28.html">
+<img alt="previous" src="Conjugate%20gradient%20method_files/prev.png" border="0" width="63" height="24" align="BOTTOM"></a>   
+<br>
+<b> Next:</b> <a name="tex2html420" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node30.html">Simulated annealing</a>
+<b> Up:</b> <a name="tex2html418" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node22.html">Optimization</a>
+<b> Previous:</b> <a name="tex2html412" href="http://fourier.eng.hmc.edu/e176/lectures/NM/node28.html">Line minimization</a>
+<!--End of Navigation Panel-->
+<address>
+Ruye Wang
+2015-02-12
+</address>
+
+
+</body></html>
