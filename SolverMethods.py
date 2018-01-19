@@ -21,7 +21,7 @@ class SolverMethods:
 			self.b = b
 		self.initSol = initSol
 
-	def JacobiIterate(self, dampFactor = 0):
+	def JacobiIterate(self, dampFactor = 0.0):
 		errorDataJacobi = []
 		x = []
 		d = self.D.diagonal()
@@ -43,7 +43,7 @@ class SolverMethods:
 			r = np.subtract(self.b, y)
 			xPrev = np.copy(x)
 			x = [r_i / d_i for r_i, d_i in zip(r, d)]
-			x = np.add(np.multiply(xPrev, dampFactor), np.multiply(x, (1-dampFactor)))
+			x = np.add(np.multiply(xPrev, dampFactor), np.multiply(x, (1.0-dampFactor)))
 		
 		err = np.subtract(self.b, self.M.dot(x))
 		absErr = math.sqrt(err.dot(err))
@@ -103,7 +103,7 @@ class SolverMethods:
 		if(self.initSol == []):
 			x = np.zeros_like(self.b)
 		else:
-			x = self.initSol
+			x = np.copy(self.initSol)
 
 		for j in range(self.L.shape[0]):
 			currentLowerRows.append(self.L.getrow(j))
@@ -125,7 +125,7 @@ class SolverMethods:
 				currSum = 1.0 * (self.b[i] - currSum) / d[i]
 				xNew[i] = x[i] + omega * (currSum - x[i])
 
-			x = xNew
+			x = np.copy(xNew)
 			xNew = np.zeros_like(x)
 
 			for i in reversed(range(self.L.shape[0])):
@@ -137,7 +137,7 @@ class SolverMethods:
 				currSum = 1.0 * (self.b[i] - currSum) / d[i]
 				xNew[i] = x[i] + omega * (currSum - x[i])
 
-			x = xNew
+			x = np.copy(xNew)
 
 		err = np.subtract(self.b, self.M.dot(x))
 		absErr = math.sqrt(err.dot(err))
