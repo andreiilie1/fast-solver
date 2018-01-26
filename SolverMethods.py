@@ -21,7 +21,8 @@ class SolverMethods:
 			self.b = b
 		self.initSol = initSol
 
-	def JacobiIterate(self, dampFactor = 0.0):
+	def JacobiIterate(self, dampFactor = 1.0):
+		dampFactor = 1.0 - dampFactor
 		errorDataJacobi = []
 		x = []
 		d = self.D.diagonal()
@@ -43,14 +44,15 @@ class SolverMethods:
 			r = np.subtract(self.b, y)
 			xPrev = np.copy(x)
 			x = [r_i / d_i for r_i, d_i in zip(r, d)]
-			x = np.add(np.multiply(xPrev, dampFactor), np.multiply(x, (1.0-dampFactor)))
+			xNew = np.add(np.multiply(xPrev, dampFactor), np.multiply(x, (1.0-dampFactor)))
+			x = np.copy(xNew)
 		
 		err = np.subtract(self.b, self.M.dot(x))
 		absErr = math.sqrt(err.dot(err))
 		errorDataJacobi.append(absErr)
 		return x, absErr, errorDataJacobi, err
 
-	def GaussSeidelIterate(self):
+	def GaussSeidelIterate(self, omega = 1.0):
 		errorDataGaussSeidel = []
 		x = []
 		d = self.L.diagonal()
@@ -84,7 +86,8 @@ class SolverMethods:
 			# if np.allclose(x, xNew, rtol=1e-6):
 			#	 break
 
-			x = xNew
+			xNew = np.add(np.multiply(x, (1.0 - omega)), np.multiply(xNew, (omega)))
+			x = np.copy(xNew)
 
 		err = np.subtract(self.b, self.M.dot(x))
 		absErr = math.sqrt(err.dot(err))
