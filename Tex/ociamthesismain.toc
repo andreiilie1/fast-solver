@@ -33,14 +33,24 @@
 \contentsline {subsection}{\numberline {3.2.3}Comparison}{4}
 \contentsline {section}{\numberline {3.3}General comparison and comments}{4}
 \contentsline {chapter}{\numberline {4}The Multigrid Method}{5}
-\contentsline {section}{\numberline {4.1}Motivation}{5}
-\contentsline {subsection}{\numberline {4.1.1}Capturing different frequencies}{5}
-\contentsline {subsection}{\numberline {4.1.2}The 2-grid algorithm}{5}
-\contentsline {section}{\numberline {4.2}Formulation}{5}
-\contentsline {subsection}{\numberline {4.2.1}The V-Cycle}{5}
-\contentsline {subsection}{\numberline {4.2.2}Smoothers}{5}
-\contentsline {subsection}{\numberline {4.2.3}Prolongation and restriction operators}{5}
-\contentsline {section}{\numberline {4.3}Experimental results}{5}
-\contentsline {chapter}{\numberline {5}Sample Title}{6}
-\contentsline {chapter}{\numberline {A}Sample Title}{7}
-\contentsline {chapter}{\numberline {B}Sample Title}{8}
+\contentsline {section}{\numberline {4.1}Motivation}{6}
+\contentsline {subsection}{\numberline {4.1.1}Capturing different frequencies}{6}
+\contentsline {subsection}{\numberline {4.1.2}The 2-grid algorithm}{6}
+\contentsline {section}{\numberline {4.2}Formulation}{6}
+\contentsline {subsection}{\numberline {4.2.1}The V-Cycle}{6}
+\contentsline {subsection}{\numberline {4.2.2}Smoothers}{6}
+\contentsline {subsection}{\numberline {4.2.3}Prolongation and restriction operators}{6}
+\contentsline {subsection}{\numberline {4.2.4}Implementation details}{6}
+\contentsline {section}{\numberline {4.3}Practical aspects}{6}
+\contentsline {subsection}{\numberline {4.3.1}Impact of the smoothing parameter}{6}
+\contentsline {subsection}{\numberline {4.3.2}Impact of prolongation and restriction operators}{6}
+\contentsline {subsection}{\numberline {4.3.3}General experimental results}{6}
+\contentsline {section}{\numberline {4.4}Multigrid as a preconditioner for Conjugate Gradient Method}{6}
+\contentsline {subsection}{\numberline {4.4.1}Theoretical aspects}{6}
+\contentsline {subsection}{\numberline {4.4.2}Implementation details}{6}
+\contentsline {subsection}{\numberline {4.4.3}Experimental Results}{6}
+\contentsline {section}{\numberline {4.5}Comparison between solvers}{6}
+\contentsline {chapter}{\numberline {5}Applications}{7}
+\contentsline {chapter}{\numberline {6}Conclusions}{8}
+\contentsline {chapter}{\numberline {A}Sample Title}{9}
+\contentsline {chapter}{\numberline {B}Sample Title}{10}

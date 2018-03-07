@@ -107,7 +107,9 @@
     {{\@college} \par}
 \vspace*{1ex}
     {University of Oxford \par}
-\vspace*{25mm}
+\vspace*{13mm}
+	{Project Coordinator: Professor David Kay \par}
+\vspace*{13mm}
     {{\submittedtext} \par}
 \vspace*{1ex}
     {\it {\@degree} \par}

@@ -3,8 +3,8 @@ from scipy.sparse import *
 from scipy import *
 import math
 
-tol = 0.00001
-
+tol = 0.000001
+# https://www.ibiblio.org/e-notes/webgl/gpu/mg/poisson_rel.html : eigenvalues for the poisson matrix
 class SolverMethods:
 	# Iterative methods for solving a linear system
 
@@ -22,12 +22,10 @@ class SolverMethods:
 		self.initSol = initSol
 
 	def JacobiIterate(self, dampFactor = 1.0):
-		dampFactor = 1.0 - dampFactor
 		errorDataJacobi = []
 		x = []
 		d = self.D.diagonal()
 		iterationConstant = self.iterationConstant
-
 		# Initial guess is x = (0,0,...0) if not provided as a parameter
 		if(self.initSol == []):
 			x = np.zeros_like(self.b)
@@ -37,20 +35,73 @@ class SolverMethods:
 		# Iterate constant number of times (TODO: iterate while big error Mx-b)
 		for i in range(iterationConstant):
 			err = np.subtract(self.M.dot(x), self.b)
-			absErr = math.sqrt(err.dot(err))
-			errorDataJacobi.append(absErr)
+			absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
+			errorDataJacobi.append(math.log(absErr))
+
+			if(absErr < tol):
+				break
 
 			y = self.R.dot(x)
 			r = np.subtract(self.b, y)
 			xPrev = np.copy(x)
 			x = [r_i / d_i for r_i, d_i in zip(r, d)]
-			xNew = np.add(np.multiply(xPrev, dampFactor), np.multiply(x, (1.0-dampFactor)))
+			xNew = np.add(np.multiply(xPrev, (1.0 - dampFactor)), np.multiply(x, dampFactor))
 			x = np.copy(xNew)
+
+
 		
 		err = np.subtract(self.b, self.M.dot(x))
-		absErr = math.sqrt(err.dot(err))
-		errorDataJacobi.append(absErr)
+		absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
+		errorDataJacobi.append(math.log(absErr))
 		return x, absErr, errorDataJacobi, err
+
+	def JacobiIterate2(self, omega = 1.0):
+		errorDataJacobi = []
+		x = []
+		currentLowerRows = []
+		currentUpperRows = []
+		d = self.D.diagonal()
+		iterationConstant = self.iterationConstant
+		# Initial guess is x = (0,0,...0) if not provided as a parameter
+		if(self.initSol == []):
+			x = np.zeros_like(self.b)
+		else:
+			x = self.initSol
+
+		for j in range(self.L.shape[0]):
+			currentLowerRows.append(self.L.getrow(j))
+			currentUpperRows.append(self.U.getrow(j))
+
+		# Iterate constant number of times (TODO: iterate while big error Mx-b)
+		for i in range(iterationConstant):
+			err = np.subtract(self.M.dot(x), self.b)
+			absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
+			errorDataJacobi.append(math.log(absErr))
+
+			if(absErr < tol):
+				break
+
+			xNew = np.zeros_like(x)
+			for j in range(self.L.shape[0]):
+				currentLowerRow = currentLowerRows[j]
+				currentUpperRow = currentUpperRows[j]
+
+				rowSum = currentLowerRow.dot(x) + currentUpperRow.dot(x) - x[j] * d[j]
+				rowSum = 1.0 * (self.b[j] - rowSum) / d[j]
+				xNew[j] = x[j] + omega * (rowSum - x[j])
+
+			if np.allclose(x, xNew, rtol=1e-6):
+				 break
+
+			x = np.copy(xNew)
+
+
+		
+		err = np.subtract(self.b, self.M.dot(x))
+		absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
+		errorDataJacobi.append(math.log(absErr))
+		return x, absErr, errorDataJacobi, err
+
 
 	def GaussSeidelIterate(self, omega = 1.0):
 		errorDataGaussSeidel = []
@@ -72,29 +123,29 @@ class SolverMethods:
 
 		for i in range(iterationConstant):
 			err = np.subtract(self.M.dot(x), self.b)
-			absErr = math.sqrt(err.dot(err))
-			errorDataGaussSeidel.append(absErr)
+			absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
+			errorDataGaussSeidel.append(math.log(absErr))
 
 			xNew = np.zeros_like(x)
 			for j in range(self.L.shape[0]):
 				currentLowerRow = currentLowerRows[j]
 				currentUpperRow = currentUpperRows[j]
 
-				rowSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x)
-				xNew[j] = 1.0 * (self.b[j] - rowSum) / d[j]
+				rowSum = currentLowerRow.dot(xNew) + currentUpperRow.dot(x) 
+				rowSum = 1.0 * (self.b[j] - rowSum) / d[j]
+				xNew[j] = x[j] + omega * (rowSum - x[j])
 
 			# if np.allclose(x, xNew, rtol=1e-6):
-			#	 break
+			# 	 break
 
-			xNew = np.add(np.multiply(x, (1.0 - omega)), np.multiply(xNew, (omega)))
+			if(absErr < tol):
+				break
+
 			x = np.copy(xNew)
 
-		err = np.subtract(self.b, self.M.dot(x))
-		absErr = math.sqrt(err.dot(err))
-		errorDataGaussSeidel.append(absErr)
 		return x, absErr, errorDataGaussSeidel, err
 
-	def SSORIterate(self, omega = 1.0):
+	def SSORIterate(self, omega = 1.0, debugOn = False):
 		errorDataSSOR = []
 		x = []
 		d = self.D.diagonal()
@@ -112,11 +163,13 @@ class SolverMethods:
 			currentLowerRows.append(self.L.getrow(j))
 			currentUpperRows.append(self.U.getrow(j))
 
-		for k in range(iterationConstant):
 
-			err = np.subtract(self.M.dot(x), self.b)
-			absErr = math.sqrt(err.dot(err))
-			errorDataSSOR.append(absErr)
+		err = np.subtract(self.M.dot(x), self.b)
+		absErr = np.linalg.norm(err) / (np.linalg.norm(self.b))
+		errorDataSSOR.append(math.log(absErr))
+
+
+		for k in range(iterationConstant):
 
 			xNew = np.zeros_like(x)
 
@@ -129,22 +182,32 @@ class SolverMethods:
 				xNew[i] = x[i] + omega * (currSum - x[i])
 
 			x = np.copy(xNew)
+			if(debugOn and k%10 == 0):
+				print("Iteration: ", k)
+				print("After top to bottom: ", x)
 			xNew = np.zeros_like(x)
-
 			for i in reversed(range(self.L.shape[0])):
-				currSum = 0
+				currSum = 0.0
 				currentLowerRow = currentLowerRows[i]
 				currentUpperRow = currentUpperRows[i]
 
 				currSum = currentLowerRow.dot(x) + currentUpperRow.dot(xNew) - d[i] * x[i]
 				currSum = 1.0 * (self.b[i] - currSum) / d[i]
 				xNew[i] = x[i] + omega * (currSum - x[i])
-
 			x = np.copy(xNew)
+			if(debugOn and k%10 ==0):
+				print("After bottom to top: ", x)
+				print("______________")
+			err = np.subtract(self.M.dot(x), self.b)
+			absErr = np.linalg.norm(err) / (np.linalg.norm(self.b))
+			errorDataSSOR.append(math.log(absErr))
+
+			if(absErr < tol):
+				break
 
 		err = np.subtract(self.b, self.M.dot(x))
-		absErr = math.sqrt(err.dot(err))
-		errorDataSSOR.append(absErr)
+		absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
+		# errorDataSSOR.append(math.log(absErr))
 		return x, absErr, errorDataSSOR, err
 
 	def ConjugateGradientsHS(self):

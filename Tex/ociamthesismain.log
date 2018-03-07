@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2018.1.24)  26 JAN 2018 19:01
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2018.1.24)  26 JAN 2018 23:56
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -73,8 +73,8 @@ LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
 (Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
 ))
 (./ociamthesismain.aux (./abstract.aux) (./chapter1.aux) (./chapter2.aux)
-(./chapter3.aux) (./chapter4.aux) (./conclusions.aux) (./appendix1.aux)
-(./appendix2.aux))
+(./chapter3.aux) (./chapter4.aux) (./chapter5.aux) (./conclusions.aux)
+(./appendix1.aux) (./appendix2.aux))
 \openout1 = `ociamthesismain.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 23.
@@ -152,10 +152,10 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
 Package epstopdf Info: Source file: <oxlogo.eps>
-(epstopdf)                    date: 2008-04-08 11:42:23
+(epstopdf)                    date: 2018-01-26 19:05:11
 (epstopdf)                    size: 513488 bytes
 (epstopdf)             Output file: <oxlogo-eps-converted-to.pdf>
-(epstopdf)                    date: 2018-01-26 13:53:25
+(epstopdf)                    date: 2018-01-26 19:05:11
 (epstopdf)                    size: 34195 bytes
 (epstopdf)             Command: <repstopdf --outfile=oxlogo-eps-converted-to.pd
 f oxlogo.eps>
@@ -198,19 +198,13 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 \openout3 = `ociamthesismain.toc'.
 
  [2]
-(./ociamthesismain.lof)
-\tf@lof=\write4
-\openout4 = `ociamthesismain.lof'.
-
- [3
-
-]
 \openout2 = `chapter1.aux'.
 
- (./chapter1.tex
+
+(./chapter1.tex
 Chapter 1.
 
-LaTeX Warning: Citation `Einstein' on page 1 undefined on input line 6.
+LaTeX Warning: Citation `einstein' on page 1 undefined on input line 6.
 
 ) [1
 
@@ -248,11 +242,24 @@ Chapter 4.
 
 
 ]
+Overfull \vbox (35.34673pt too high) has occurred while \output is active []
+
+
+[6]
+\openout2 = `chapter5.aux'.
+
+ (./chapter5.tex
+Chapter 5.
+) [7
+
+
+
+]
 \openout2 = `conclusions.aux'.
 
  (./conclusions.tex
-Chapter 5.
-) [6
+Chapter 6.
+) [8
 
 
 
@@ -261,7 +268,7 @@ Chapter 5.
 
  (./appendix1.tex
 Appendix A.
-) [7
+) [9
 
 
 
@@ -270,35 +277,35 @@ Appendix A.
 
  (./appendix2.tex
 Appendix B.
-) [8
+) [10
 
 
 
 ]
 No file ociamthesismain.bbl.
 (./ociamthesismain.aux (./abstract.aux) (./chapter1.aux) (./chapter2.aux)
-(./chapter3.aux) (./chapter4.aux) (./conclusions.aux) (./appendix1.aux)
-(./appendix2.aux))
+(./chapter3.aux) (./chapter4.aux) (./chapter5.aux) (./conclusions.aux)
+(./appendix1.aux) (./appendix2.aux))
 
 LaTeX Warning: There were undefined references.
 
  ) 
 Here is how much of TeX's memory you used:
- 1972 strings out of 493029
- 26804 string characters out of 6136234
- 87357 words of memory out of 5000000
- 5418 multiletter control sequences out of 15000+600000
+ 1977 strings out of 493029
+ 26857 string characters out of 6136234
+ 87662 words of memory out of 5000000
+ 5419 multiletter control sequences out of 15000+600000
  10756 words of font info for 40 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 37i,5n,26p,489b,253s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 37i,5n,26p,560b,253s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></us
 r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share
 /texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texliv
 e/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb>
-Output written on ociamthesismain.pdf (13 pages, 94496 bytes).
+Output written on ociamthesismain.pdf (14 pages, 96072 bytes).
 PDF statistics:
- 68 PDF objects out of 1000 (max. 8388607)
- 46 compressed objects within 1 object stream
+ 71 PDF objects out of 1000 (max. 8388607)
+ 48 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  6 words of extra memory for PDF output out of 10000 (max. 10000000)
 

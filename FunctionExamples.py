@@ -24,7 +24,20 @@ def laplaceValueFunction1(x, y):
 	value = 6.0 * x + 6.0 * y
 	return value
 
+def sin2BorderFunction(x, y):
+	# Assert (x,y) is on border
+	k = 2.0
+	j = 5.0
+	value = 1.0 * math.sin(math.pi * k * x) * math.sin(math.pi * j * y)
+	return value
 
+
+# RHS value of the differential equation at points x, y
+def sin2ValueFunction(x, y):
+	k = 2.0
+	j = 5.0
+	value = - 1.0 * math.sin(math.pi * k * x) * math.sin(math.pi * j * y) * math.pi * math.pi * (k * k + j * j)
+	return value
 
 
 # Function examples for a time equation discretizer (heat equation)
@@ -40,4 +53,25 @@ def heatRhsFunction(x, y, t):
 def heatInitialFunction(x, y, t):
 	# Assert t == 0
 	value = math.sin(x) * math.sin(y)
+	return value
+
+
+
+def sin1DValueFunction(x):
+	value = - math.sin(x)
+	return value
+
+def sin1DBorderFunction(x):
+	value = math.sin(x)
+	return value
+
+
+def sin1DValueFunction2(x):
+	k = 3.0
+	value = - math.sin(math.pi * k * x) * k * k * math.pi * math.pi
+	return value
+
+def sin1DBorderFunction2(x):
+	k = 3.0
+	value = math.sin(math.pi * k * x)
 	return value
