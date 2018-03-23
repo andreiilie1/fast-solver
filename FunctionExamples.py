@@ -75,3 +75,7 @@ def sin1DBorderFunction2(x):
 	k = 3.0
 	value = math.sin(math.pi * k * x)
 	return value
+
+
+def zero1D(x):
+	return 0

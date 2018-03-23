@@ -796,6 +796,12 @@ def solveHeatEquationForAllTimeSteps(discr):
 # ______________________________________________________________
 # DEBUG TOOLS
 
+wSSOR2D = {}
+wSSOR2D[8] = 1.503
+wSSOR2D[16] = 1.720
+wSSOR2D[32] = 1.852
+wSSOR2D[64] = 1.923
+wSSOR2D[128] = 1.961
 
 
 def testHeatEquationSolver():
@@ -862,18 +868,11 @@ def testDifferentParamIterations1D():
 	
 	# for omega in [1.97, 1.98, 2.0/(1.0 + math.sin(math.pi / N))]:
 	optSOROmega = 2.0/(1.0 + math.sin(math.pi / N))
-	for omega in [optSOROmega, 1.974]:
+	for omega in [optSOROmega]:
 		print(omega)
 		sinEquationDiscr = sed1D.EquationDiscretizer1D(N, fe.sin1DBorderFunction, fe.sin1DValueFunction)
 
 		initSol = []
-
-		# for i in range((N + 1) * (N + 1)):
-		# 	(x, y) = sinEquationDiscr.getCoordinates(i)
-		# 	if(x == 0 or y == 0 or x == N or y == N):
-		# 		initSol.append(sinEquationDiscr.borderFunction(1.0 * x / N, 1.0 * y / N))
-		# 	else:
-		# 		initSol.append(0.0)
 
 		for i in range((N+1)):
 			if(i == 0 or i == N):
@@ -894,7 +893,7 @@ def testDifferentParamIterations():
 	
 	# for omega in [1.97, 1.98, 2.0/(1.0 + math.sin(math.pi / N))]:
 	optSOROmega = 2.0/(1.0 + math.sin(math.pi / N))
-	for omega in [optSOROmega, 1.852]:
+	for omega in [optSOROmega, 1.503]:
 		print(omega)
 		sinEquationDiscr = sed.SimpleEquationDiscretizer(N, fe.sinBorderFunction, fe.sinValueFunction)
 
@@ -922,6 +921,106 @@ def testDifferentParamIterations():
 
 lineColor = ["red", "green", "blue", "brown", "black", "pink", "gray"]
 
+def testConjugateGradient():
+	N = 256
+	n = 4
+	while(n < N):
+		print(n, ':')
+		n = 2 * n
+		sinEquationDiscr = sed.SimpleEquationDiscretizer(n, fe.sinBorderFunction, fe.sinValueFunction)
+
+		initSol = []
+
+		for i in range((n + 1) * (n + 1)):
+			(x, y) = sinEquationDiscr.getCoordinates(i)
+			if(x == 0 or y == 0 or x == n or y == n):
+				initSol.append(sinEquationDiscr.borderFunction(1.0 * x / n, 1.0 * y / n))
+			else:
+				initSol.append(0.0)
+
+		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol)
+		# wOpt = 2.0/(1.0 + math.sin(math.pi / n))
+		# (x, absErr, errorData, r) = solver.SSORIterate(wOpt)
+		(x, absErr, errorData) = solver.ConjugateGradientsHS()
+		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
+		plt.plot(errorData, label = str(n)+", Conjugate Gradient")
+		
+	plt.legend(loc = "upper right", prop={'size':'16'})
+	plt.show()
+
+def testSteepestDescent():
+	N = 128
+	n = 2
+	while(n < N):
+		print(n, ':')
+		n = 2 * n
+		sinEquationDiscr = sed.SimpleEquationDiscretizer(n, fe.sinBorderFunction, fe.sinValueFunction)
+
+		initSol = []
+
+		for i in range((n + 1) * (n + 1)):
+			(x, y) = sinEquationDiscr.getCoordinates(i)
+			if(x == 0 or y == 0 or x == n or y == n):
+				initSol.append(sinEquationDiscr.borderFunction(1.0 * x / n, 1.0 * y / n))
+			else:
+				initSol.append(0.0)
+
+		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol)
+		# wOpt = 2.0/(1.0 + math.sin(math.pi / n))
+		# (x, absErr, errorData, r) = solver.SSORIterate(wOpt)
+		(x, absErr, errorData) = solver.SteepestDescent()
+		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
+		plt.plot(errorData, label = str(n)+", Steepest Descent")
+
+	plt.legend(loc = "upper right", prop={'size':'16'})
+	plt.show()
+
+def testJacobiSmoothing1D():
+	N = 32
+	h = 1.0 / N
+	x = np.arange(0.0, 1.0 + h, h)
+	k = 3.0
+	initSol = np.sin(math.pi * 8 * x) + np.sin(math.pi * 5 * x) + np.sin(math.pi * 3 *x)
+	plt.plot(x,initSol)
+	# plt.show()
+	sinEquationDiscr = sed1D.EquationDiscretizer1D(N, fe.zero1D, fe.zero1D)
+	solver = sm.SolverMethods(20, sinEquationDiscr, initSol = initSol)
+	(y, absErr, errorData, r) = solver.JacobiIterate(1.0)
+	plt.plot(x,y)
+	plt.show()
+	print(len(errorData))
+
+def plotDiscretizedSine1D():
+	N = 16
+	h = 1.0 / N
+	r = 1.0 / 100.0
+	xCont = np.arange(0.0, 1.0 + r, r)
+	xDiscr = np.arange(0.0, 1.0 + h, h)
+
+	xCont2 = np.arange(0.0, 1.0 + r, r)
+	xDiscr2 = np.arange(0.0, 1.0 + h, h)
+
+
+	k = 5.0
+	contFunction = np.sin(math.pi * k * xCont)
+	discrFunction = np.sin(math.pi * k * xDiscr)
+
+	contFunction2 = np.sin(math.pi * 8.0 * xCont2)
+	discrFunction2 = np.sin(math.pi * 8.0 * xDiscr2)
+	plt.subplot(211)
+	plt.plot(xCont, contFunction)
+	plt.plot(xCont, contFunction2)
+
+	plt.subplot(212)
+	plt.plot(xDiscr, discrFunction, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction, 'ko')
+
+	plt.plot(xDiscr, discrFunction2, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction2, 'ko')
+	plt.show()
+
+plotDiscretizedSine1D()
+
 def testJacobi():
 	N = 128
 	n = 2
@@ -948,13 +1047,13 @@ def testJacobi():
 		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
 		plt.plot(errorData, label = str(n)+", Jacobi", color=lineColor[index])
 		index +=1
-	# plt.legend(loc = "upper right", prop={'size':'16'})
-	# plt.show()
+	plt.legend(loc = "upper right", prop={'size':'16'})
+	plt.show()
 
 
 def testGaussSeidel():
-	N = 64
-	n = 2
+	N = 128
+	n = 4
 	index = 0
 
 	while(n < N):
@@ -974,14 +1073,44 @@ def testGaussSeidel():
 		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol)
 		wOpt = 2.0/(1.0 + math.sin(math.pi / n))
 		# (x, absErr, errorData, r) = solver.SSORIterate(wOpt)
-		(x, absErr, errorData, r) = solver.SSORIterate(wOpt)
+		(x, absErr, errorData, r) = solver.GaussSeidelIterate(wOpt)
 		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
-		plt.plot(errorData, label = str(n))
+		plt.plot(errorData, label = str(n) +", SOR", color=lineColor[index])
+		index += 1
+	plt.show()
+
+def testSSOR():
+	N = 128
+	n = 4
+	index = 0
+
+	while(n < N):
+		n = 2 * n
+		print(n, ':')
+		sinEquationDiscr = sed.SimpleEquationDiscretizer(n, fe.sinBorderFunction, fe.sinValueFunction)
+
+		initSol = []
+
+		for i in range((n + 1) * (n + 1)):
+			(x, y) = sinEquationDiscr.getCoordinates(i)
+			if(x == 0 or y == 0 or x == n or y == n):
+				initSol.append(sinEquationDiscr.borderFunction(1.0 * x / n, 1.0 * y / n))
+			else:
+				initSol.append(0.0)
+
+		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol)
+		wOpt = 2.0/(1.0 + math.sin(math.pi / n))
+		# (x, absErr, errorData, r) = solver.SSORIterate(wOpt)
+		(x, absErr, errorData, r) = solver.SSORIterate(wSSOR2D[n])
+		doubleSize = list(range(0, 2 * len(errorData), 2))
+		print(doubleSize, errorData)
+		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
+		plt.legend(loc = "upper right", prop={'size':'15'})
+		plt.plot(doubleSize, errorData, label = str(n)+", SSOR", color=lineColor[index], linestyle='dashed')
 		index += 1
 
 	plt.legend(loc = "upper right", prop={'size':'15'})
 	plt.show()
-
 
 def printDiscretization():
 	f1=open('./testfile', 'w+')
@@ -991,15 +1120,61 @@ def printDiscretization():
 
 	f1.close()
 
+def plotExactSol1D():
+	plt.figure(1)
+	n = 2
+	N = 32
+	t = np.arange(0.0, 1.0, 0.01)
+	k = 3.0
+	s = np.sin(k*np.pi*t)
+	index = 0
+	while(n < N):
+		n = 2 * n
+		h = 1.0 / n
+		print(n, ':')
+		x  = np.arange(0.0, 1.0 + h, h)
+		sinEquationDiscr = sed1D.EquationDiscretizer1D(n, fe.sin1DBorderFunction2, fe.sin1DValueFunction2)
+
+		initSol = []
+
+		for i in range((n+1)):
+			if(i == 0 or i == n):
+				initSol.append(sinEquationDiscr.borderFunction(1.0 * i/ n))
+			else:
+				initSol.append(0)
+		M = sinEquationDiscr.M.todense()
+		v = sinEquationDiscr.valueVector2D
+		exactSol = np.linalg.solve(M, v)
+		index = index +1
+		plt.subplot('22'+str(index))
+		plt.plot(x,exactSol, 'bo')
+		if(index == 1):
+			plt.plot(x,exactSol, label = "Linear interpolation of $\mathbf{u}^{4}$")
+		if(index == 2):
+			plt.plot(x,exactSol, label = "Linear interpolation of $\mathbf{u}^{8}$")
+		if(index == 3):
+			plt.plot(x,exactSol, label = "Linear interpolation of $\mathbf{u}^{16}$")
+		if(index == 4):
+			plt.plot(x,exactSol, label = "Linear interpolation of $\mathbf{u}^{32}$")
+		plt.plot(t, s, label = "Exact continuous solution: $u$")
+		plt.legend(loc = "lower right", prop={'size':'12'})
+		plt.title('N = '+str(n))
+
+	plt.show()
+
 # printDiscretization()
 # testMG2D()
 # testMG1D()
 # testJacobi()
 # testGaussSeidel()
+# testSSOR()
 
-testDifferentParamIterations()
-testDifferentParamIterations1D()
+# testDifferentParamIterations()
+# testDifferentParamIterations1D()
 # testMGCG()
+# testConjugateGradient()
+
+# plotExactSol1D()
 
 
 # xSol, err, errData = ConjugateGradientsHS(sinBorderFunction, sinValueFunction, N)

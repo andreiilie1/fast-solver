@@ -3,7 +3,7 @@ from scipy.sparse import *
 from scipy import *
 import math
 
-tol = 0.000001
+tol = 0.00001
 # https://www.ibiblio.org/e-notes/webgl/gpu/mg/poisson_rel.html : eigenvalues for the poisson matrix
 class SolverMethods:
 	# Iterative methods for solving a linear system
@@ -35,7 +35,7 @@ class SolverMethods:
 		# Iterate constant number of times (TODO: iterate while big error Mx-b)
 		for i in range(iterationConstant):
 			err = np.subtract(self.M.dot(x), self.b)
-			absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
+			absErr = np.linalg.norm(err) / (1 + np.linalg.norm(self.b))
 			errorDataJacobi.append(math.log(absErr))
 
 			if(absErr < tol):
@@ -51,7 +51,7 @@ class SolverMethods:
 
 		
 		err = np.subtract(self.b, self.M.dot(x))
-		absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
+		absErr = np.linalg.norm(err) / (1 + np.linalg.norm(self.b))
 		errorDataJacobi.append(math.log(absErr))
 		return x, absErr, errorDataJacobi, err
 
@@ -182,9 +182,11 @@ class SolverMethods:
 				xNew[i] = x[i] + omega * (currSum - x[i])
 
 			x = np.copy(xNew)
-			if(debugOn and k%10 == 0):
+
+			if(debugOn and k % 10 == 0):
 				print("Iteration: ", k)
 				print("After top to bottom: ", x)
+
 			xNew = np.zeros_like(x)
 			for i in reversed(range(self.L.shape[0])):
 				currSum = 0.0
@@ -251,3 +253,29 @@ class SolverMethods:
 			r = r_new
 
 		return x, absErr, errorDataConjugateGradients
+
+	def SteepestDescent(self):
+		M = self.M
+		b = self.b
+		avoidDivByZeroError = 0.0000000000000000001
+		x = np.zeros_like(b)
+		r = np.subtract(b, M.dot(x))
+		errorDataSteepestDescent = []
+		iterationConstant = self.iterationConstant
+		for i in range(iterationConstant):
+			err = np.subtract(M.dot(x), b)
+			absErr = np.linalg.norm(err)
+			errorDataSteepestDescent.append(math.log(absErr))
+			alpha_numerator = r.dot(r)	
+			alpha_denominator = r.dot(M.dot(r))
+			if(alpha_denominator < avoidDivByZeroError):
+				break
+			alpha = alpha_numerator / alpha_denominator
+			x = np.add(x, np.dot(r, alpha))
+			r = np.subtract(b, M.dot(x))
+			if(np.linalg.norm(r) < tol):
+				break
+		err = np.subtract(M.dot(x), b)
+		absErr = np.linalg.norm(err)
+		errorDataSteepestDescent.append(math.log(absErr))
+		return x, absErr, errorDataSteepestDescent
