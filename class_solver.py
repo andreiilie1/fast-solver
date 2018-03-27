@@ -924,12 +924,14 @@ lineColor = ["red", "green", "blue", "brown", "black", "pink", "gray"]
 def testConjugateGradient():
 	N = 256
 	n = 4
+	index = 0
 	while(n < N):
-		print(n, ':')
+		print(2 * n, ':')
 		n = 2 * n
 		sinEquationDiscr = sed.SimpleEquationDiscretizer(n, fe.sinBorderFunction, fe.sinValueFunction)
 
 		initSol = []
+		actualSol = fe.actualSinSolution(n)
 
 		for i in range((n + 1) * (n + 1)):
 			(x, y) = sinEquationDiscr.getCoordinates(i)
@@ -938,21 +940,24 @@ def testConjugateGradient():
 			else:
 				initSol.append(0.0)
 
-		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol)
+		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol, actualSol = actualSol)
 		# wOpt = 2.0/(1.0 + math.sin(math.pi / n))
 		# (x, absErr, errorData, r) = solver.SSORIterate(wOpt)
 		(x, absErr, errorData) = solver.ConjugateGradientsHS()
 		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
-		plt.plot(errorData, label = str(n)+", Conjugate Gradient")
+		plt.plot(errorData, label = "N = " + str(n))
+		index = index + 1
 		
 	plt.legend(loc = "upper right", prop={'size':'16'})
 	plt.show()
 
 def testSteepestDescent():
-	N = 128
-	n = 2
+	N = 256
+	n = 4
+	index = 0
+	print("STEEPEST DESCENT TEST")
 	while(n < N):
-		print(n, ':')
+		print(2*n, ':')
 		n = 2 * n
 		sinEquationDiscr = sed.SimpleEquationDiscretizer(n, fe.sinBorderFunction, fe.sinValueFunction)
 
@@ -965,12 +970,12 @@ def testSteepestDescent():
 			else:
 				initSol.append(0.0)
 
-		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol)
-		# wOpt = 2.0/(1.0 + math.sin(math.pi / n))
-		# (x, absErr, errorData, r) = solver.SSORIterate(wOpt)
+		actualSol = fe.actualSinSolution(n)
+		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol, actualSol = [])
+
 		(x, absErr, errorData) = solver.SteepestDescent()
-		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
-		plt.plot(errorData, label = str(n)+", Steepest Descent")
+		plt.plot(errorData, label = "N = " + str(n))
+		index = index + 1
 
 	plt.legend(loc = "upper right", prop={'size':'16'})
 	plt.show()
@@ -1019,7 +1024,6 @@ def plotDiscretizedSine1D():
 	plt.plot(xDiscr, discrFunction2, 'ko')
 	plt.show()
 
-plotDiscretizedSine1D()
 
 def testJacobi():
 	N = 128
@@ -1027,7 +1031,7 @@ def testJacobi():
 	index = 0
 
 	while(n < N):
-		print(n, ':')
+		print(2 * n, ':')
 		n = 2 * n
 		sinEquationDiscr = sed.SimpleEquationDiscretizer(n, fe.sinBorderFunction, fe.sinValueFunction)
 
@@ -1083,7 +1087,7 @@ def testSSOR():
 	N = 128
 	n = 4
 	index = 0
-
+	print("SSOR TEST")
 	while(n < N):
 		n = 2 * n
 		print(n, ':')
@@ -1100,13 +1104,13 @@ def testSSOR():
 
 		solver = sm.SolverMethods(2000, sinEquationDiscr, initSol = initSol)
 		wOpt = 2.0/(1.0 + math.sin(math.pi / n))
-		# (x, absErr, errorData, r) = solver.SSORIterate(wOpt)
-		(x, absErr, errorData, r) = solver.SSORIterate(wSSOR2D[n])
-		doubleSize = list(range(0, 2 * len(errorData), 2))
-		print(doubleSize, errorData)
-		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
-		plt.legend(loc = "upper right", prop={'size':'15'})
-		plt.plot(doubleSize, errorData, label = str(n)+", SSOR", color=lineColor[index], linestyle='dashed')
+		# wOpt = 1.0
+		wOpt = wSSOR2D[n]
+		(x, absErr, errorData, r) = solver.SSORIterate(wOpt)
+		# (x, absErr, errorData, r) = solver.SSORIterate(wSSOR2D[n])
+		# doubleSize = list(range(0, 2 * len(errorData), 2))
+		# plt.plot(doubleSize, errorData, label = str(n)+", SSOR", color=lineColor[index], linestyle='dashed')
+		plt.plot(errorData, label = str(n) + ", SSOR")
 		index += 1
 
 	plt.legend(loc = "upper right", prop={'size':'15'})
@@ -1162,6 +1166,7 @@ def plotExactSol1D():
 
 	plt.show()
 
+
 # printDiscretization()
 # testMG2D()
 # testMG1D()
@@ -1172,7 +1177,8 @@ def plotExactSol1D():
 # testDifferentParamIterations()
 # testDifferentParamIterations1D()
 # testMGCG()
-# testConjugateGradient()
+# testSteepestDescent()
+testConjugateGradient()
 
 # plotExactSol1D()
 

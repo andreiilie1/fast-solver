@@ -9,6 +9,13 @@ def sinBorderFunction(x, y):
 	value = 1.0 * math.sin(x) * math.sin(y)
 	return value
 
+def actualSinSolution(N):
+	actualSolution = []
+	for i in range(N + 1):
+		for j in range(N + 1):
+			actualSolution.append(math.sin((1.0) * i / N) * math.sin((1.0) * j / N))
+	return(actualSolution)
+
 
 # RHS value of the differential equation at points x, y
 def sinValueFunction(x, y):
