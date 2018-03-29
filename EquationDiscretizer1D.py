@@ -38,7 +38,7 @@ class EquationDiscretizer1D:
 		self.colListLower = []
 		self.dataListLower = []
 
-		self.valueVector2D = []
+		self.valueVector1D = []
 
 		self.computeMatrixAndVector()
 		self.M = csr_matrix((np.array(self.dataList), (np.array(self.rowList), np.array(self.colList))), shape = ((N + 1), (N + 1)))
@@ -53,7 +53,8 @@ class EquationDiscretizer1D:
 			print("Discretization matrix: ")
 			print(self.M.todense())
 			print("RHS vector: ") 
-			print(self.valueVector2D)
+			print(self.valueVector1D)
+			
 	# Helper functions for creating the complete, lower, upper and diagonal matrices
 	def addEntry(self, type, row, column, value):
 		if(type == COMPLETE_MATRIX):
@@ -90,7 +91,7 @@ class EquationDiscretizer1D:
 			self.addEntry(STRICTLY_UPPER_MATRIX, row, column, value)
 			self.addEntry(REMAINDER_MATRIX, row, column, value)
 
-	valueVector2D = []
+	valueVector1D = []
 
 
 	# Check if a(i) is on border
@@ -102,7 +103,7 @@ class EquationDiscretizer1D:
 
 
 
-	# Compute M and valueVector2D (in Mx = valueVector2D) and
+	# Compute M and valueVector1D (in Mx = valueVector1D) and
 	# computer L, U, D (lower, strictly upper and diagonal matrices of M)
 	def computeMatrixAndVector(self):
 		for currentRow in range((self.N + 1)):
@@ -116,7 +117,7 @@ class EquationDiscretizer1D:
 			self.addEntryToMatrices(row, row, 1.0)
 			# The value of the border on point x/N, y/N is known,
 			# so append the equation variable = value to the system
-			self.valueVector2D.append(self.borderFunction((1.0) * x / self.N))
+			self.valueVector1D.append(self.borderFunction((1.0) * x / self.N))
 		else:
 			value = - self.valueFunction((1.0) * x / self.N) * self.h * self.h
 			self.addEntryToMatrices(row, row, 2.0)
@@ -127,5 +128,5 @@ class EquationDiscretizer1D:
 				else:
 					localValue = self.borderFunction((1.0) * (x + dX) / self.N)
 					value += localValue
-			self.valueVector2D.append(value)
+			self.valueVector1D.append(value)
 

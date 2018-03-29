@@ -1,3 +1,6 @@
+# ___________________________________
+# USED FOR AUXILLIARY PLOTS IN THE THESIS
+
 from mpl_toolkits import mplot3d
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,7 +31,7 @@ def plotF():
 	# plt.show()
 
 Xs = []
-def SteepestDescent(M, b, iterationConstant = 100):
+def SteepestDescent(M, b, iterationConstant = 100, plotFirstIterations = False):
 	# ax = plt.axes()
 	plt.xlim(-2, 3)
 	plt.ylim(-2, 2)
@@ -39,26 +42,26 @@ def SteepestDescent(M, b, iterationConstant = 100):
 	iterationConstant = iterationConstant
 	for i in range(iterationConstant):
 		Xs.append(x)
-		print(x)
+
 		err = np.subtract(M.dot(x), b)
 		absErr = np.linalg.norm(err) / np.linalg.norm(b)
 		errorDataSteepestDescent.append(math.log(absErr))
+
 		alpha_numerator = r.dot(r)	
 		alpha_denominator = r.dot(M.dot(r))
 		if(alpha_denominator < avoidDivByZeroError):
-			print('exit here divzero')
 			break
 		alpha = alpha_numerator / alpha_denominator
+
 		xOld = np.copy(x)
 		x = np.add(x, np.dot(r, alpha))
-		# print(xOld)
-		# print(x)
-		# print('______')
+
+		# Used for plotting first iterations of Steepest descent
 		fSize = 26
 		strCoord = "("+format(xOld[0], ".2f")+", "+ format(xOld[1], ".2f")+", "+format(f(xOld[0], xOld[1]), ".3f")+")"
 		if(i>=0):
 			ax.plot([xOld[0], x[0]], [xOld[1], x[1]], [f(xOld[0], xOld[1]), f(x[0], x[1])], color="k", linewidth = 3)
-		if(i>= 0):
+		if(plotFirstIterations):
 			if(i == 0 ):
 				ax.plot([xOld[0]],[xOld[1]],[f(xOld[0], xOld[1])], markerfacecolor='white', markeredgecolor='white', marker='o', markersize=4, alpha=1)
 				ax.text(xOld[0],xOld[1] +0.1,f(xOld[0], xOld[1]),"$\mathbf{x}_0$" + strCoord, fontsize = fSize, color = "white")
@@ -71,25 +74,25 @@ def SteepestDescent(M, b, iterationConstant = 100):
 			if(i == 3):
 				ax.plot([xOld[0]],[xOld[1]],[f(xOld[0], xOld[1])], markerfacecolor='white', markeredgecolor='white', marker='o', markersize=4, alpha=1)
 				ax.text(xOld[0],xOld[1]+0.01,f(xOld[0], xOld[1]),"$\mathbf{x}_3$" + strCoord, fontsize = fSize, color = "white")
-			# if(i == 4):
-			# 	ax.plot([xOld[0]],[xOld[1]],[f(xOld[0], xOld[1])], markerfacecolor='white', markeredgecolor='white', marker='o', markersize=4, alpha=1)
-			# 	ax.text(xOld[0],xOld[1],f(xOld[0], xOld[1]),"$\mathbf{x}_4$", fontsize = fSize, color = "white")
-			# if(i == 5):
-			# 	ax.plot([xOld[0]],[xOld[1]],[f(xOld[0], xOld[1])], markerfacecolor='white', markeredgecolor='white', marker='o', markersize=4, alpha=1)
-			# 	ax.text(xOld[0],xOld[1],f(xOld[0], xOld[1]),"$\mathbf{x}_5$", fontsize = fSize, color = "white")
+
+
 		r = np.subtract(b, M.dot(x))
 		if(np.linalg.norm(r) < tol):
 			break
+
 	err = np.subtract(M.dot(x), b)
 	Xs.append(x)
 	absErr = np.linalg.norm(err) / np.linalg.norm(b)
 	errorDataSteepestDescent.append(math.log(absErr))
+
+	#Plot solution for model problem
 	ax.plot([2.0],[1.0],[f(2.0, 1.0)], markerfacecolor='red', markeredgecolor='red', marker='o', markersize=5, alpha=1)
 	xSol = 2.0
 	ySol = 1.0
 	strCoord = "("+format(xSol, ".2f")+", "+ format(ySol, ".2f")+", "+format(f(xSol, ySol), ".3f")+")"
 	ax.text(2.0, 0.95, f(2.0, 1.0), "$\mathbf{x}_{sol}$"+strCoord, fontsize = fSize, color = "red")
 	plt.show()
+
 	return x, absErr, errorDataSteepestDescent
 
 
@@ -169,112 +172,99 @@ def ConjugateGradients_Golub(M, b):
 	return x, absErr, errorDataConjugateGradients
 
 
-def conjugate_grad(A, b, x=None):
-    """
-    Description
-    -----------
-    Solve a linear equation Ax = b with conjugate gradient method.
-    Parameters
-    ----------
-    A: 2d numpy.array of positive semi-definite (symmetric) matrix
-    b: 1d numpy.array
-    x: 1d numpy.array of initial point
-    Returns
-    -------
-    1d numpy.array x such that Ax = b
-    """
-    n = len(b)
-    if not x:
-        x = np.zeros(n)
-    r = np.dot(A, x) - b
-    p = - r
-    r_k_norm = np.dot(r, r)
-    for i in xrange(2*n):
-        Ap = np.dot(A, p)
-        alpha = r_k_norm / np.dot(p, Ap)
-        x += alpha * p
-        r += alpha * Ap
-        r_kplus1_norm = np.dot(r, r)
-        beta = r_kplus1_norm / r_k_norm
-        r_k_norm = r_kplus1_norm
-        if r_kplus1_norm < 1e-5:
-            print 'Itr:', i
-            break
-        p = beta * p - r
-	return x
+def plotDiscretizedSine1D():
+	N = 16
+	h = 1.0 / N
+	r = 1.0 / 100.0
+	xCont = np.arange(0.0, 1.0 + r, r)
+	xDiscr = np.arange(0.0, 1.0 + h, h)
 
-plotF()
-x, absErr, errData= SteepestDescent(A, b)
-print(len(errData))
-
-# # print(x)
-
-# x = SteepestDescent(A, b)
-# print(x)
-
-print(Xs)
-n = len(Xs)
-# ax = plt.axes()
-# for i in range(1,n):
-# 	ax.plot([Xs[i-1][0], Xs[i][0]],[Xs[i-1][1], Xs[i][1]], color="k", linewidth = 3)
-# plt.show()
-print(n)
+	xCont2 = np.arange(0.0, 1.0 + r, r)
+	xDiscr2 = np.arange(0.0, 1.0 + h, h)
 
 
-# Steepest Descent on sinx sin y model problem number of steps (start at N=2)
-# 23, 37, 124, 460, 1640, 5710, 19560, 65030
+	k = 5.0
+	contFunction = np.sin(math.pi * k * xCont)
+	discrFunction = np.sin(math.pi * k * xDiscr)
 
-# flops:
-# (2, ':')
-# 1858
-# (4, ':')
-# 11938
-# (8, ':')
-# 174098
-# (16, ':')
-# 2743858
-# (32, ':')
-# 40484818
-# (64, ':')
-# 574008898
-# (128, ':')
-# 7937609298
-# (256, ':')
-# 106048973058
+	contFunction2 = np.sin(math.pi * 8.0 * xCont2)
+	discrFunction2 = np.sin(math.pi * 8.0 * xDiscr2)
+	plt.subplot(211)
+	plt.plot(xCont, contFunction)
+	plt.plot(xCont, contFunction2)
+
+	plt.subplot(212)
+	plt.plot(xDiscr, discrFunction, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction, 'ko')
+
+	plt.plot(xDiscr, discrFunction2, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction2, 'ko')
+	plt.show()
+
+def plotSineModes():
+	N = 16
+	h = 1.0 / N
+	xDiscr = np.arange(0.0, 1.0 + h, h)
+
+	discrFunction1 = np.sin(math.pi * 1.0  * xDiscr)
+	discrFunction2 = np.sin(math.pi * 4.0 * xDiscr)
+	discrFunction3 = np.sin(math.pi * 10.0 * xDiscr)
+	discrFunction4 = np.sin(math.pi * 14.0 * xDiscr)
+	discrFunction5 = np.sin(math.pi * 16.0 * xDiscr)
+
+	plt.subplot(511)
+	plt.title("$\sin{(\pi x)}$")
+	plt.plot(xDiscr, discrFunction1, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction1, 'ko')
+
+	plt.subplot(512)
+	plt.title("$\sin{(4 \pi x)}$")
+	plt.plot(xDiscr, discrFunction2, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction2, 'ko')
+
+	plt.subplot(513)
+	plt.title("$\sin{(10 \pi x)}$")
+	plt.plot(xDiscr, discrFunction3, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction3, 'ko')
+
+	plt.subplot(514)
+	plt.title("$\sin{(14 \pi x)}$")
+	plt.plot(xDiscr, discrFunction4, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction4, 'ko')
+
+	plt.subplot(515)
+	plt.title("$\sin{(31 \pi x)}$")
+	plt.plot(xDiscr, discrFunction5, linestyle='dashed') 
+	plt.plot(xDiscr, discrFunction5, 'ko')
+
+	plt.show()
 
 
+def plotProjectedSine():
+	N1 = 16
+	h1 = 1.0 / N1
+	xDiscr1 = np.arange(0.0, 1.0 + h1, h1)
 
-# SSOR flops (starting an N = 8)
+	N2 = 8
+	h2 = 1.0 / N2
+	xDiscr2 = np.arange(0.0, 1.0 + h2, h2)
+	xDiscr22 = np.arange(0.0, 2.0 + h2, h2)
 
-# (8, ':')
-# ('flops: ', 32508)
+	discrFunction1 = np.sin(math.pi * 6.0 * xDiscr1)
+	discrFunction2 = np.sin(math.pi * 6.0 * xDiscr2)
+	discrFunction22 = np.sin(math.pi * 6.0 * xDiscr22)
 
-# (16, ':')
-# ('flops: ', 244398)
+	plt.subplot(311)
+	plt.plot(xDiscr1, discrFunction1, linestyle='dashed') 
+	plt.plot(xDiscr1, discrFunction1, 'ko')
 
-# (32, ':')
-# ('flops: ', 1747308)
+	plt.subplot(312)
+	plt.plot(xDiscr2, discrFunction2, linestyle='dashed') 
+	plt.plot(xDiscr2, discrFunction2, 'ko')
 
-# (64, ':')
-# ('flops: ', 12407892)
+	plt.subplot(313)
+	plt.plot(xDiscr22, discrFunction22, linestyle='dashed') 
+	plt.plot(xDiscr22, discrFunction22, 'ko')
+	plt.show()
 
-# (128, ':')
-# ('flops: ', 85576050)
-
-
-# SOR flops 
-
-# (8, ':')
-# 16440
-
-# (16, ':')
-# 129732
-
-# (32, ':')
-# 992154
-
-# (64, ':')
-# 7640730
-
-# (128, ':')
-# 59699844
+plotProjectedSine()
