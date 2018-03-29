@@ -552,6 +552,7 @@ class MultiGridAsPreconditioner:
 			return v
 
 		omega = 1.95
+		# omega = 2.0/(1.0 + math.sin(math.pi/N))
 
 		solver1 = sm.SolverMethods(self.niu1, discr, f, initSol)
 		v, _, _, _ = solver1.SSORIterate(omega)

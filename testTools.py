@@ -29,7 +29,7 @@ def testHeatEquationSolver():
 	return xSol
 
 def testMGCG():
-	for N in [4,8,16,32]:
+	for N in [4,8,16,32, 64, 128]:
 		xSolPrecond, errPrecond, errDataPrecond = MG.MultiGridPrecondCG(fe.sinBorderFunction, fe.sinValueFunction, N)
 		plt.plot(errDataPrecond, label=str(N))
 		plt.legend(loc='upper right')
