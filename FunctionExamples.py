@@ -51,10 +51,12 @@ def sin2ValueFunction(x, y):
 
 def heatSinBorderFunction(x, y, t):
 	value = 1.0 * math.sin(x) * math.sin(y)
+	value = 0.0
 	return value
 
 def heatRhsFunction(x, y, t):
 	value = -2.0 * math.sin(x) * math.sin(y)
+	value = 0.0
 	return value
 
 def heatInitialFunction(x, y, t):

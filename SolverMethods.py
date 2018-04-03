@@ -8,7 +8,7 @@ tol = 0.00001
 class SolverMethods:
 	# Iterative methods for solving a linear system
 
-	def __init__(self, iterationConstant, eqDiscretizer, b = [], initSol = [], actualSol = []):
+	def __init__(self, iterationConstant, eqDiscretizer, b = [], initSol = [], actualSol = [], initB = []):
 		self.iterationConstant = iterationConstant
 		self.M = eqDiscretizer.M
 		self.D = eqDiscretizer.D
@@ -19,6 +19,7 @@ class SolverMethods:
 			self.b = eqDiscretizer.valueVector2D
 		else:
 			self.b = b
+		self.initB = self.b
 		self.initSol = initSol
 		self.actualSol = actualSol
 
@@ -36,12 +37,12 @@ class SolverMethods:
 		# Iterate constant number of times (TODO: iterate while big error Mx-b)
 		for i in range(iterationConstant):
 			err = np.subtract(self.M.dot(x), self.b)
-			absErr = np.linalg.norm(err) / (1 + np.linalg.norm(self.b))
-			errorDataJacobi.append(math.log(absErr))
+			absErr = np.linalg.norm(err) / (np.linalg.norm(self.b))
 
 			if(absErr < tol):
 				break
-
+			errorDataJacobi.append(math.log(absErr))
+			
 			y = self.R.dot(x)
 			r = np.subtract(self.b, y)
 			xPrev = np.copy(x)
@@ -52,7 +53,7 @@ class SolverMethods:
 
 		
 		err = np.subtract(self.b, self.M.dot(x))
-		absErr = np.linalg.norm(err) / (1 + np.linalg.norm(self.b))
+		absErr = np.linalg.norm(err) / (np.linalg.norm(self.b))
 		errorDataJacobi.append(math.log(absErr))
 		return x, absErr, errorDataJacobi, err
 
@@ -235,10 +236,10 @@ class SolverMethods:
 		err = np.subtract(self.b, self.M.dot(x))
 		absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
 
-		print("Flops: ",flops)
-		print("Iterations: ", len(errorDataSSOR) - 1)
+		# print("Flops: ",flops)
+		# print("Iterations: ", len(errorDataSSOR) - 1)
 
-		return x, absErr, errorDataSSOR, err
+		return x, absErr, errorDataSSOR, err, flops
 
 	def ConjugateGradientsHS(self):
 		flops = 0
@@ -264,8 +265,12 @@ class SolverMethods:
 
 		while(not convergence):
 			solutionError = np.subtract(M.dot(x), b)
-			relativeResidualErr = np.linalg.norm(solutionError) / np.linalg.norm(b)
+			relativeResidualErr = np.linalg.norm(solutionError) / np.linalg.norm(self.initB)
 
+			if(relativeResidualErr < tol):
+				convergence = True
+				break
+			
 			if(actualSol != []):
 				err = np.subtract(actualSol, x)
 				absErr = np.linalg.norm(err)
@@ -273,9 +278,6 @@ class SolverMethods:
 			else:
 				errorDataConjugateGradients.append(math.log(relativeResidualErr))
 
-			if(relativeResidualErr < tol):
-				convergence = True
-				break
 
 			Md = M.dot(d)
 			alpha_numerator = beta_numerator

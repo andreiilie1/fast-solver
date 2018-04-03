@@ -3,9 +3,11 @@
 
 from mpl_toolkits import mplot3d
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import math
-
+matplotlib.rcParams['text.usetex'] = True
+matplotlib.rcParams['text.latex.unicode'] = True
 tol = 0.00001
 
 A = np.array([[2.0, 1.0], [1.0,3.0]], dtype = np.float)
@@ -14,7 +16,7 @@ b = np.array([5.0,5.0], dtype = np.float)
 def f(x, y):
 	return (1 * x ** 2 +  1.5 * y ** 2 + 1 * x*y - 5 * x - 5 * y)
 
-ax = plt.axes(projection='3d')
+# ax = plt.axes(projection='3d')
 # plt.axis('off')
 def plotF():
 	x = np.linspace(0.8, 2.5, 20)
@@ -267,4 +269,103 @@ def plotProjectedSine():
 	plt.plot(xDiscr22, discrFunction22, 'ko')
 	plt.show()
 
-plotProjectedSine()
+def plotGrid():
+	 # markerfacecolor='white', markeredgecolor='white', marker='o', markersize=4, alpha=1
+	 plt.plot([0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0],[0.0, 0.5, 1.0, 0.0, 0.5, 1.0, 0.0, 0.5, 1.0], 'ro', marker = 'o', markersize = 10, markerfacecolor='blue', markeredgecolor='blue')
+	 plt.plot([0, 0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.75, 0.75, 0.75, 0.75, 0.75, 1, 1], [0.25, 0.75, 0, 0.25, 0.5, 0.75, 1, 0.25, 0.75, 0, 0.25, 0.5, 0.75, 1, 0.25, 0.75], 'ro', marker ='x', markersize = 10)
+	 plt.show()
+
+def plotInterpolatedExample():
+	N = 4.0
+	h1 = 1.0 / N
+	h2 = 0.5 / N
+	xDiscr1 = np.arange(0.0, 1.0 + h1, h1)
+	xDiscr2 = np.arange(0.0, 1.0 + h2, h2)
+	discrFunction1 = [0.0, 0.3, -0.2, 0.1, 0.0]
+	discrFunction2 = []
+	for i in range(len(discrFunction1) -1):
+		discrFunction2.append(discrFunction1[i])
+		discrFunction2.append((discrFunction1[i] + discrFunction1[i+1])/2.0)
+	discrFunction2.append(discrFunction1[len(discrFunction1)-1])
+	plt.subplot(211)
+	plt.plot(xDiscr1, discrFunction1, linestyle='dashed') 
+	plt.plot(xDiscr1, discrFunction1, 'ko')
+
+	plt.subplot(212)
+	plt.plot(xDiscr2, discrFunction2, linestyle='dashed') 
+	plt.plot(xDiscr2, discrFunction2, 'ko')
+	plt.show()
+
+def plotRestrictionExample():
+	N = 4.0
+	h1 = 0.5 / N
+	h2 = 1.0 / N
+	xDiscr1 = np.arange(0.0, 1.0 + h1, h1)
+	xDiscr2 = np.arange(0.0, 1.0 + h2, h2)
+
+	discrFunction1 = [0.0, 0.1, -0.1, 0.15, -0.2, 0.1, -0.13, 0.09, 0.0]
+	discrFunction2 = []
+	for i in range(len(discrFunction1)):
+		if(i%2 == 0):
+			discrFunction2.append(discrFunction1[i])
+
+	discrFunction3 = []
+	for i in range(len(discrFunction1)):
+		if(i == 0 or i == len(discrFunction1)-1):
+			discrFunction3.append(0.0)
+		elif(i%2 == 0):
+			discrFunction3.append((2 * discrFunction1[i] + discrFunction1[i-1]+discrFunction1[i+1])/4.0)
+
+	plt.subplot(311)
+	plt.ylim(-0.22, 0.22)
+	plt.plot(xDiscr1, discrFunction1, linestyle='dashed') 
+	plt.plot(xDiscr1, discrFunction1, 'ko')
+
+	plt.subplot(312)
+	plt.ylim(-0.22, 0.22)
+	plt.plot(xDiscr2, discrFunction2, linestyle='dashed') 
+	plt.plot(xDiscr2, discrFunction2, 'ko')
+
+	plt.subplot(313)
+	plt.ylim(-0.22, 0.22)
+	plt.plot(xDiscr2, discrFunction3, linestyle='dashed') 
+	plt.plot(xDiscr2, discrFunction3, 'ko')
+	plt.show()
+
+
+def plotVCycle():
+	plt.axis('off')
+	h = 0.1
+	plt.xlim(0,6)
+	plt.ylim(0.5,3.5)
+	xs = [1, 2, 3, 4, 5]
+	ys = [3, 2, 1, 2, 3]
+	plt.plot(xs, ys)
+	plt.plot(xs, ys, 'ro', markerfacecolor='k', markeredgecolor='k', markersize = 10)
+	plt.text(1.0 - 7 * h, 3.0 + h,"$\Omega^{h}$: relax $\mu_1$ times", fontsize = 20)
+	plt.text(2.0 - 12 * h, 2.0 ,"$\Omega^{2h}$: relax $\mu_1$ times", fontsize = 20)
+	plt.text(3.0, 1.0 - 2 * h, "$\Omega^{4h}$: compute exact solution", fontsize = 20)
+	plt.text(4.0 + 2 * h, 2.0,"$\Omega^{2h}$: relax $\mu_2$ times", fontsize = 20)
+	plt.text(5.0 - 2 * h, 3.0 + h,"$\Omega^{h}$: relax $\mu_2$ times", fontsize = 20)
+
+	plt.text(1.5 - 2 * h, 2.5 - h, "$\mathbf{I}_{h}^{2h}$", fontsize = 20)
+	plt.text(2.5 - 2 * h, 1.5 - h, "$\mathbf{I}_{2h}^{4h}$", fontsize = 20)
+
+	plt.text(3.5 + 1.5 * h, 1.5 - h, "$\mathbf{I}_{4h}^{2h}$", fontsize = 20)
+	plt.text(4.5 + 1.5 * h, 2.5 - h, "$\mathbf{I}_{2h}^{h}$", fontsize = 20)
+
+	plt.arrow(1.0,3.0,0.8,-0.8,head_width=0.1, head_length=0.2)
+	plt.arrow(2.0,2.0,0.8,-0.8,head_width=0.1, head_length=0.2)
+
+	plt.arrow(3.0,1.0,0.8,0.8,head_width=0.1, head_length=0.2)
+	plt.arrow(4.0,2.0,0.8,0.8,head_width=0.1, head_length=0.2)
+
+	plt.arrow(1.05, 3.0, 3.8, 0.0, head_width=0.05, head_length=0.05, color = "red")
+	plt.arrow(2.05, 2.0, 1.8, 0.0, head_width=0.05, head_length=0.05, color = "red")
+
+	plt.text(3 - 5*h, 3 - h, "Correct approximation on $\Omega^{h}$", color = "red", fontsize = 13)
+	plt.text(3 - 5*h, 2 - h, "Correct approximation on $\Omega^{2h}$", color = "red", fontsize = 13)
+
+	plt.show()
+
+plotVCycle()

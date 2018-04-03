@@ -21,10 +21,11 @@ flops = 0
 # Class encapsulating the Multigrid method for a given 2D Poisson equation instance
 class MultiGrid2D:
 
-	def __init__(self, maxN, borderFunction, valueFunction, niu1 = 4, niu2 = 4):
+	def __init__(self, maxN, borderFunction, valueFunction, niu1 = 4, niu2 = 4, omega = 1.95):
 		# BorderFunction and valueFunction pass the function values in the Poisson equation
 		self.borderFunction = borderFunction
 		self.valueFunction = valueFunction
+		self.omega = omega
 
 		# Niu1 and niu2 are the number of relaxation steeps per going-down and going-up parts of the v-cycle
 		self.niu1 = niu1
@@ -35,6 +36,7 @@ class MultiGrid2D:
 
 		# Create and store grid for different levels of discretization
 		self.discrLevel = []
+		self.flops = 0
 		i = 0
 		while(maxN > 2):
 			assert(maxN % 2 == 0)
@@ -66,22 +68,26 @@ class MultiGrid2D:
 	# Interpolate function from grid level coarseN to grid level fineN with full weight stencil
 	def interpolate(self, r, fineN, coarseN):
 		interp = []
+		flops = 0
 		for i in range((fineN + 1) * (fineN + 1)):
 			(x, y) = self.getCoordinates(i, fineN)
 			
 			if(x % 2 == 0 and y % 2 == 0):
 				index = self.getRow(x / 2, y / 2, coarseN)
 				value = r[index]
+				flops += 1
 
 			elif(x % 2 == 1 and y % 2 == 0):
 				index1 = self.getRow((x - 1) / 2, y / 2, coarseN)
 				index2 = self.getRow((x + 1) / 2, y / 2, coarseN)
 				value = (r[index1] + r[index2]) / 2.0
+				flops += 2
 
 			elif(x % 2 == 0 and y % 2 == 1):
 				index1 = self.getRow(x / 2, (y - 1) / 2, coarseN)
 				index2 = self.getRow(x / 2, (y + 1) / 2, coarseN)
 				value = (r[index1] + r[index2]) / 2.0
+				flops += 2
 
 			else:
 				index1 = self.getRow((x - 1) / 2, (y - 1) / 2, coarseN)
@@ -89,17 +95,20 @@ class MultiGrid2D:
 				index3 = self.getRow((x - 1) / 2, (y + 1) / 2, coarseN)
 				index4 = self.getRow((x + 1) / 2, (y + 1) / 2, coarseN)
 				value = (r[index1] + r[index2] + r[index3] + r[index4]) / 4.0
+				flops += 4
 
 			if(x == 0 or y == 0 or x == fineN or y == fineN):
 				value = 0
 
 			interp.append(value)
 
+		self.flops += flops
 		return interp
 
 	# Restrict function from grid level fineN to grid level coarseN using the transpose action of interpolate
 	def restrictTransposeAction(self, r, fineN, coarseN):
 		restr = []
+		flops = 0
 
 		for i in range((coarseN + 1) * (coarseN + 1)):
 			(x, y) = self.getCoordinates(i, coarseN)
@@ -115,6 +124,7 @@ class MultiGrid2D:
 					index = self.getRow(newX, newY, fineN)
 					newEntry += 0.5 * r[index]
 					divideFactor += 0.5
+					flops += 2
 
 			for (dX, dY) in [(1, 1), (-1, 1), (-1, -1), (1, -1)]:
 				newX = x + dX
@@ -123,6 +133,7 @@ class MultiGrid2D:
 					index = self.getRow(newX, newY, fineN)
 					newEntry += 0.25 * r[index]
 					divideFactor += 0.25
+					flops += 2
 			
 			newEntry = 1.0 * newEntry / divideFactor
 			if(divideFactor < 4.0):
@@ -134,6 +145,7 @@ class MultiGrid2D:
 
 			restr.append(newEntry)
 
+		self.flops += flops
 		return restr
 
 	# Vcycle iterates once a V-relaxation scheme of multigrid starting at level L for a grid size N
@@ -155,16 +167,19 @@ class MultiGrid2D:
 				)
 
 			# Omega is the smoother parameter
-			omega = 2.0/(1.0 + math.sin(math.pi/N))
-			omega = 1.92
-
-			v, _, _, _= solver1.SSORIterate(omega)
+			omega = self.omega
+			# omega = 2.0/(1.0 + math.sin(math.pi * 1.0 / N))
+			# print(self.niu1, self.niu2, omega)
+			v, _, _, _, flops= solver1.SSORIterate(omega)
+			self.flops += flops
 
 			coarseN = N  / 2
 
 			Mv = discr.M.dot(v)
+			self.flops += (2 * discr.M.getnnz() - len(v))
 
 			residual = np.subtract(f, Mv)
+			self.flops += len(f)
 
 			coarseResidual = self.restrictTransposeAction(residual, N, coarseN)
 
@@ -172,6 +187,7 @@ class MultiGrid2D:
 
 			fineV = self.interpolate(coarseV, N, coarseN)
 			w = np.add(v, fineV)
+			self.flops += len(v)
 
 			solver2 = sm.SolverMethods(
 				iterationConstant = self.niu2, 
@@ -180,7 +196,8 @@ class MultiGrid2D:
 				initSol = w,
 				)
 
-			v2, _, _, _= solver2.SSORIterate(omega)
+			v2, _, _, _, flops= solver2.SSORIterate(omega)
+			self.flops += flops
 			return v2
 
 	# IterateVCycles iterates the function vcycle() for t times to obtain a better approximation
@@ -203,8 +220,11 @@ class MultiGrid2D:
 		currSol = np.copy(initSol)
 
 		for i in range(t):
+			if(i % 10 == 0):
+				print(i)
+
 			residual = np.subtract(f, discr.M.dot(currSol))
-			absErr = 1.0 * la.norm(residual) / (normF + 1)
+			absErr = 1.0 * la.norm(residual) / (normF)
 			vErrors.append(math.log(absErr))
 
 			resSol = self.vcycle(N, 0, residual, np.zeros_like(currSol))
@@ -214,7 +234,7 @@ class MultiGrid2D:
 			if(absErr < tol):
 				break
 
-		return currSol, vErrors
+		return currSol, vErrors, self.flops
 
 
 # Class encapsulating the Multigrid method for a given 1d Poisson equation instance
@@ -227,6 +247,8 @@ class MultiGrid:
 		self.niu2 = niu2
 		self.discrLevel = []
 		self.N = maxN
+
+		self.flops = 0
 
 		i = 0
 		while(maxN > 2):
@@ -274,22 +296,26 @@ class MultiGrid:
 
 	def interpolate(self, r, fineN, coarseN):
 		interp = []
+		flops = 0
 		for i in range((fineN + 1) * (fineN + 1)):
 			(x, y) = self.getCoordinates(i, fineN)
 			
 			if(x % 2 == 0 and y % 2 == 0):
 				index = self.getRow(x / 2, y / 2, coarseN)
 				value = r[index]
+				flops += 1
 
 			elif(x % 2 == 1 and y % 2 == 0):
 				index1 = self.getRow((x - 1) / 2, y / 2, coarseN)
 				index2 = self.getRow((x + 1) / 2, y / 2, coarseN)
 				value = (r[index1] + r[index2]) / 2.0
+				flops += 2
 
 			elif(x % 2 == 0 and y % 2 == 1):
 				index1 = self.getRow(x / 2, (y - 1) / 2, coarseN)
 				index2 = self.getRow(x / 2, (y + 1) / 2, coarseN)
 				value = (r[index1] + r[index2]) / 2.0
+				flops += 2
 
 			else:
 				index1 = self.getRow((x - 1) / 2, (y - 1) / 2, coarseN)
@@ -297,16 +323,19 @@ class MultiGrid:
 				index3 = self.getRow((x - 1) / 2, (y + 1) / 2, coarseN)
 				index4 = self.getRow((x + 1) / 2, (y + 1) / 2, coarseN)
 				value = (r[index1] + r[index2] + r[index3] + r[index4]) / 4.0
+				flops += 4
 
 			if(x == 0 or y == 0 or x == fineN or y == fineN):
 				value = 0
 
 			interp.append(value)
 
+		self.flops += flops
 		return interp
 
 	def restrictTransposeAction(self, r, fineN, coarseN):
 		restr = []
+		flops = 0
 
 		for i in range((coarseN + 1) * (coarseN + 1)):
 			(x, y) = self.getCoordinates(i, coarseN)
@@ -322,6 +351,7 @@ class MultiGrid:
 					index = self.getRow(newX, newY, fineN)
 					newEntry += 0.5 * r[index]
 					divideFactor += 0.5
+					flops += 2
 
 			for (dX, dY) in [(1, 1), (-1, 1), (-1, -1), (1, -1)]:
 				newX = x + dX
@@ -330,6 +360,7 @@ class MultiGrid:
 					index = self.getRow(newX, newY, fineN)
 					newEntry += 0.25 * r[index]
 					divideFactor += 0.25
+					flops += 2
 			
 			newEntry = 1.0 * newEntry / divideFactor
 			if(divideFactor < 4.0):
@@ -341,6 +372,7 @@ class MultiGrid:
 
 			restr.append(newEntry)
 
+		self.flops += flops
 		return restr
 
 
@@ -362,7 +394,9 @@ class MultiGrid:
 
 			# omega = 2.0/(1.0 + math.sin(math.pi/N))
 			# omega = 1.95
-			v, _, _, _ = solver1.SSORIterate(omega)
+			omega = 1.0
+			v, _, _, flops = solver1.SSORIterate(omega)
+			self.flops += flops
 			if(not(v[0] == 0)):
 				print("ERROR")
 			if(not(v[N] == 0)):
@@ -371,8 +405,10 @@ class MultiGrid:
 			coarseN = N  / 2
 
 			Mv = discr.M.dot(v)
+			flops += (2 * discr.M.getnnz() - len(v))
 
 			residual = np.subtract(f, Mv)
+			flops += len(f)
 
 			coarseResidual = self.restrict1D(residual, N, coarseN)
 
@@ -390,6 +426,7 @@ class MultiGrid:
 
 			fineV = self.interpolate1D(coarseV, N, coarseN)
 			w = np.add(v, fineV)
+			flops += len(v)
 
 			solver2 = sm.SolverMethods(
 				iterationConstant = self.niu2, 
@@ -398,7 +435,8 @@ class MultiGrid:
 				initSol = w,
 				)
 
-			v2, _, _, _ = solver2.SSORIterate(omega)
+			v2, _, _, _, flops = solver2.SSORIterate(omega)
+			self.flops += flops
 			return v2
 
 	def iterateVCycles(self, t):
@@ -421,7 +459,7 @@ class MultiGrid:
 
 		for i in range(t):
 			residual = np.subtract(f, discr.M.dot(currSol))
-			absErr = 1.0 * la.norm(residual) / (normF + 1)
+			absErr = 1.0 * la.norm(residual) / (normF)
 			vErrors.append(math.log(absErr))
 
 			resSol = self.vcycle(N, 0, residual, np.zeros_like(currSol))
@@ -436,7 +474,7 @@ class MultiGrid:
 
 class MultiGridAsPreconditioner:
 
-	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 2 , niu2 = 2):
+	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 2 , niu2 = 2, omega = 1.93):
 		self.borderFunction = borderFunction
 		self.valueFunction = valueFunction
 		self.niu1 = niu1
@@ -444,6 +482,9 @@ class MultiGridAsPreconditioner:
 		self.maxN = maxN
 		self.bVector = bVector
 		self.discrLevel = []
+		self.omega = omega
+
+		self.flops = 0
 
 		i = 0
 		while(maxN >= 2):
@@ -473,22 +514,26 @@ class MultiGridAsPreconditioner:
 
 	def interpolate(self, r, fineN, coarseN):
 		interp = []
+		flops = 0
 		for i in range((fineN + 1) * (fineN + 1)):
 			(x, y) = self.getCoordinates(i, fineN)
 			
 			if(x % 2 == 0 and y % 2 == 0):
 				index = self.getRow(x / 2, y / 2, coarseN)
 				value = r[index]
+				flops += 1
 
 			elif(x % 2 == 1 and y % 2 == 0):
 				index1 = self.getRow((x - 1) / 2, y / 2, coarseN)
 				index2 = self.getRow((x + 1) / 2, y / 2, coarseN)
 				value = (r[index1] + r[index2]) / 2.0
+				flops += 2
 
 			elif(x % 2 == 0 and y % 2 == 1):
 				index1 = self.getRow(x / 2, (y - 1) / 2, coarseN)
 				index2 = self.getRow(x / 2, (y + 1) / 2, coarseN)
 				value = (r[index1] + r[index2]) / 2.0
+				flops += 2
 
 			else:
 				index1 = self.getRow((x - 1) / 2, (y - 1) / 2, coarseN)
@@ -496,16 +541,20 @@ class MultiGridAsPreconditioner:
 				index3 = self.getRow((x - 1) / 2, (y + 1) / 2, coarseN)
 				index4 = self.getRow((x + 1) / 2, (y + 1) / 2, coarseN)
 				value = (r[index1] + r[index2] + r[index3] + r[index4]) / 4.0
+				flops += 4
 
 			if(x == 0 or y == 0 or x == fineN or y == fineN):
 				value = 0
 
 			interp.append(value)
 
+		self.flops += flops
+
 		return interp
 
 	def restrictTransposeAction(self, r, fineN, coarseN):
 		restr = []
+		flops = 0
 
 		for i in range((coarseN + 1) * (coarseN + 1)):
 			(x, y) = self.getCoordinates(i, coarseN)
@@ -521,6 +570,7 @@ class MultiGridAsPreconditioner:
 					index = self.getRow(newX, newY, fineN)
 					newEntry += 0.5 * r[index]
 					divideFactor += 0.5
+					flops += 2
 
 			for (dX, dY) in [(1, 1), (-1, 1), (-1, -1), (1, -1)]:
 				newX = x + dX
@@ -529,6 +579,7 @@ class MultiGridAsPreconditioner:
 					index = self.getRow(newX, newY, fineN)
 					newEntry += 0.25 * r[index]
 					divideFactor += 0.25
+					flops += 2
 			
 			newEntry = 1.0 * newEntry / divideFactor
 			if(divideFactor < 4.0):
@@ -540,6 +591,7 @@ class MultiGridAsPreconditioner:
 
 			restr.append(newEntry)
 
+		self.flops += flops
 		return restr
 
 
@@ -551,28 +603,36 @@ class MultiGridAsPreconditioner:
 			v = la.solve(discr.M.todense(), f)
 			return v
 
-		omega = 1.95
+		omega = self.omega
 		# omega = 2.0/(1.0 + math.sin(math.pi/N))
 
 		solver1 = sm.SolverMethods(self.niu1, discr, f, initSol)
-		v, _, _, _ = solver1.SSORIterate(omega)
+		v, _, _, _, flops = solver1.SSORIterate(omega)
+		self.flops += flops
 
 		assert(N % 2 == 0)
 		coarseN = N  / 2
 
 		Mv = discr.M.dot(v)
+		self.flops += (2*discr.M.getnnz() - len(v))
+
 		residual = np.subtract(np.array(f), Mv)
+		self.flops += len(f)
+
 		coarseResidual = self.restrictTransposeAction(residual, N, coarseN)
 
 		coarseV = self.vcycle(coarseN, level + 1, coarseResidual)
 		fineV = self.interpolate(coarseV, N, coarseN)
 		v = np.add(v, fineV)
+		self.flops += len(v)
 
 		solver2 = sm.SolverMethods(self.niu2, discr, f, v)
-		v2, _, _, _ = solver2.SSORIterate(omega)
+		v2, _, _, _, flops = solver2.SSORIterate(omega)
+		self.flops += flops
 		return v2
 
 	def iterateVCycles(self, N, t):
+		self.flops = 0
 		initSol = []
 		vErrors = []
 		discr = sed.SimpleEquationDiscretizer(N, self.borderFunction, self.valueFunction)
@@ -594,22 +654,31 @@ class MultiGridAsPreconditioner:
 
 			initSol = currSol
 
-		return currSol, vErrors
+		return currSol, vErrors, self.flops
 
 
-def MultiGridPrecondCG(borderFunction, valueFunction, N):
-	avoidDivByZeroError = 0.000000000000000000001
+def MultiGridPrecondCG(borderFunction, valueFunction, N, niu1 =1, niu2 = 1, omega = 1.95):
+	avoidDivByZeroError = 0.000000000001
 	errorDataMGCG = []
-
-	mg = MultiGridAsPreconditioner(borderFunction, valueFunction, N)
+	
+	totalFlops = 0
+	matrixDots = 0
+	vectorAddSub = 0
+	vectorDotVector = 0
+	
+	mg = MultiGridAsPreconditioner(borderFunction, valueFunction, N, niu1 =niu1, niu2 = niu2, omega = omega)
 	f = mg.discrLevel[0].valueVector2D
 	M = mg.discrLevel[0].M
 
 	x = np.zeros_like(f, dtype = np.float)
 	r = np.subtract(f, M.dot(x))
+	matrixDots += 1
+	vectorAddSub += 1
 
-	mg.bVector = r
-	rTilda, _ = mg.iterateVCycles(N, 1)
+	mg.bVector = np.copy(r)
+	rTilda, _, flops = mg.iterateVCycles(N, 1)
+	totalFlops += flops
+
 	rTilda = np.array(rTilda)
 
 	p = np.copy(rTilda)
@@ -620,31 +689,43 @@ def MultiGridPrecondCG(borderFunction, valueFunction, N):
 		solutionError = np.subtract(M.dot(x), f)
 		absErr = 1.0 * np.linalg.norm(solutionError) / np.linalg.norm(f)
 		errorDataMGCG.append(math.log(absErr))
-		print(absErr)
 
 		if(absErr < tol):
 			convergence = True
 			break
 
+		Mp = M.dot(p)
 		alpha_numerator = rTilda.dot(r)
-		alpha_denominator = p.dot(M.dot(p))
+		alpha_denominator = p.dot(Mp)
+
+		vectorDotVector += 1
+		matrixDots += 1
 
 		if(alpha_denominator < avoidDivByZeroError):
 			convergence = True
 			break
 
 		alpha = 1.0 * alpha_numerator / alpha_denominator
+		totalFlops += 1
 
 		x = np.add(x, np.multiply(p, alpha))
+		vectorAddSub += 1
+		totalFlops += len(p)
 
-		newR = np.subtract(r, np.multiply(M.dot(p), alpha))
+		newR = np.subtract(r, np.multiply(Mp, alpha))
+		totalFlops += len(Mp)
 
-		mg.bVector = newR
-		newR_tilda, _ = mg.iterateVCycles(N, 1)
+		vectorAddSub += 1
+
+		mg.bVector = np.copy(newR)
+		newR_tilda, _, flops = mg.iterateVCycles(N, 1)
+		totalFlops += flops
+
 		newR_tilda = np.array(newR_tilda)
 
 		beta_numerator = newR_tilda.dot(newR)
 		beta_denominator = rTilda.dot(r)
+		vectorDotVector += 1
 
 		if(beta_denominator < avoidDivByZeroError):
 			convergence = True
@@ -652,11 +733,15 @@ def MultiGridPrecondCG(borderFunction, valueFunction, N):
 
 		beta = 1.0 * beta_numerator / beta_denominator
 		p = newR_tilda + np.multiply(p, beta)
+		totalFlops += 1
+		totalFlops += len(p)
 
 		r = newR
 		rTilda = newR_tilda
 
-	return x, absErr, errorDataMGCG
+	NNZ = M.getnnz()
+	totalFlops += vectorAddSub * len(x) + vectorDotVector * (2*len(x) -1) + matrixDots * (2* NNZ - len(x))
+	return x, absErr, errorDataMGCG, totalFlops
 
 
 

@@ -29,11 +29,17 @@ def testHeatEquationSolver():
 	return xSol
 
 def testMGCG():
-	for N in [4,8,16,32, 64, 128]:
-		xSolPrecond, errPrecond, errDataPrecond = MG.MultiGridPrecondCG(fe.sinBorderFunction, fe.sinValueFunction, N)
+	niu1 = 1
+	niu2 = 1
+	omega = 1.92
+	print("TESTING MGCG, niu1 = niu2 = ", niu1, ", omega = ", omega)
+	for N in [4,8,16,32,64,128, 256]:
+		print(N)
+		xSolPrecond, errPrecond, errDataPrecond, flops = MG.MultiGridPrecondCG(fe.sin2BorderFunction, fe.sin2ValueFunction, N, niu1= niu1, niu2= niu2, omega = omega)
 		plt.plot(errDataPrecond, label=str(N))
-		plt.legend(loc='upper right')
-
+		print("flops:", flops)
+	plt.legend(loc='upper right')
+	plt.title("TESTING MGCG, niu1 = niu2 = " + str(niu1) + ", omega = " + str(omega))
 	plt.show()
 
 def plotGraph(N, valuesVector):
@@ -52,20 +58,42 @@ def plotGraph(N, valuesVector):
 
 
 def testMG2D():
-	N = 64
+	N = 256
 	n = 4
 	i = 0
+	niu1 = 1
+	niu2 = 1
+	omega = 1.5
 	while(n < N):
 		n = n * 2
-		flops = 0
-		mg = MG.MultiGrid2D(n, fe.sin2BorderFunction, fe.sin2ValueFunction)
-		print(flops)
-		solMG, vErrors = mg.iterateVCycles(1000)
+		# omega = 2.0 / (1.0 + math.sin(math.pi / n))
+		print("TESTING MG2D, niu1, niu2 = ", niu1," ", niu2,", omega = ", omega)
+		print(n, ':')
+		mg = MG.MultiGrid2D(n, fe.sin2BorderFunction, fe.sin2ValueFunction, omega = omega, niu1 = niu1, niu2 = niu2)
+		solMG, vErrors, flops = mg.iterateVCycles(1000)
+		print("Flops: ",flops)
 		plt.plot(vErrors, label = str(n))
-		plt.legend(loc='upper right')
-		print(vErrors)
-
+		
+	plt.title("TESTING MG2D, niu1, niu2 = " + str(niu1) + " "+str(niu2) + ", omega = " + str(omega))
+	plt.legend(loc='upper right', prop={'size':'16'})
 	plt.show()
+
+
+testMG2D()
+
+def testMG2DvarW():
+	N = 128
+	listOmega = [1.89, 1.9, 1.91, 1.92, 1.93, 1.94, 1.95, 1.96]
+
+	for omega in listOmega:
+		mg = MG.MultiGrid2D(N, fe.sin2BorderFunction, fe.sin2ValueFunction, omega = omega, niu1 = 2, niu2 = 2)
+		solMG, vErrors, flops = mg.iterateVCycles(1000)
+		print(N, ":", flops)
+		plt.plot(vErrors, label = str(omega))
+
+	plt.legend(loc='upper right', prop={'size':'16'})
+
+# testMG2DvarW()
 
 def testMG1D():
 	N = 128
@@ -219,9 +247,9 @@ def testJacobiSmoothing1D():
 
 def testJacobi():
 	N = 128
-	n = 2
+	n = 4
 	index = 0
-
+	print("JACOBI TESTING")
 	while(n < N):
 		print(2 * n, ':')
 		n = 2 * n
@@ -241,10 +269,12 @@ def testJacobi():
 		# (x, absErr, errorData, r) = solver.SSORIterate(wOpt)
 		(x, absErr, errorData, r) = solver.JacobiIterate()
 		# print(np.linalg.eigvals(sinEquationDiscr.M.todense()))
-		plt.plot(errorData, label = str(n)+", Jacobi", color=lineColor[index])
+		plt.plot(errorData, label = str(n)+", Jacobi")
 		index +=1
 	plt.legend(loc = "upper right", prop={'size':'16'})
 	plt.show()
+
+# testJacobi()
 
 
 def testGaussSeidel():
@@ -358,4 +388,34 @@ def plotExactSol1D():
 
 	plt.show()
 
-testMGCG()
+
+def solveHeatEquationForAllTimeSteps(discr):
+	solHeat = discr.initialHeatTimeSolution()
+	valueVector = discr.computeVectorAtTimestep(1, solHeat)
+	solver = sm.SolverMethods(1000, discr, valueVector)
+	sol =[solHeat]
+
+	for k in range(1, discr.T + 1):
+		t = k * discr.dT
+		valueVector = discr.computeVectorAtTimestep(k, solHeat)
+		solver.b = valueVector
+		(solHeat, err, _) = solver.ConjugateGradientsHS()
+		sol.append(solHeat)
+		print(err)
+		plotGraph(discr.N, solHeat)
+
+	return sol
+
+
+def testHeatEquationSolver():
+	discr = ted.TimeEquationDiscretizer(
+		N = 32, 
+		T = 6, 
+		borderTimeFunction = fe.heatSinBorderFunction,
+		rhsHeatEquationFunction = fe.heatRhsFunction,
+		initialHeatTimeFunction = fe.heatInitialFunction,
+	)
+
+	solveHeatEquationForAllTimeSteps(discr)
+
+# testHeatEquationSolver()
