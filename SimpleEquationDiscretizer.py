@@ -1,3 +1,9 @@
+# SimpleEquationDiscretizer.py
+
+#  ___________________________________________________
+# |USED TO GENERATE POISSON 2D EQUATION DISCRETIZATION|
+# |___________________________________________________|
+
 import numpy as np
 from scipy.sparse import *
 from scipy import *
@@ -9,7 +15,8 @@ STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
 DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
 REMAINDER_MATRIX = 'REMAINDER_MATRIX'
 
-
+# Class encapsulating the sparse matrix
+# arising from a 2D poisson model problem
 class SimpleEquationDiscretizer:
 
 	def __init__(self, N, borderFunction, valueFunction):

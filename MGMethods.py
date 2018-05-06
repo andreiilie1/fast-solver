@@ -1,3 +1,9 @@
+# MGMethods.py
+
+#  ________________________________________________
+# |Multigrid based advanced methods, including MGCG|
+# |________________________________________________|
+
 import numpy as np
 from scipy.sparse import *
 from scipy import *
@@ -13,6 +19,7 @@ import TimeEquationDiscretizer as ted
 
 tol = 0.00001
 
+# Sanity check function for determining if a matrix is positive definite
 def is_pos_def(x):
     return np.all(np.linalg.eigvals(x) > 0)
 
@@ -105,7 +112,8 @@ class MultiGrid2D:
 		self.flops += flops
 		return interp
 
-	# Restrict function from grid level fineN to grid level coarseN using the transpose action of interpolate
+	# Restrict function from grid level fineN to grid level coarseN using 
+	# the transpose action of interpolate (full weighting operator)
 	def restrictTransposeAction(self, r, fineN, coarseN):
 		restr = []
 		flops = 0
@@ -138,7 +146,7 @@ class MultiGrid2D:
 			newEntry = 1.0 * newEntry / divideFactor
 			if(divideFactor < 4.0):
 				if(not(x == 0 or y == 0 or x == fineN or y == fineN)):
-					print("Error1")
+					print("Error code #1")
 
 			if(x == 0 or y == 0 or x == fineN or y == fineN):
 				newEntry = 0.0
@@ -168,8 +176,6 @@ class MultiGrid2D:
 
 			# Omega is the smoother parameter
 			omega = self.omega
-			# omega = 2.0/(1.0 + math.sin(math.pi * 1.0 / N))
-			# print(self.niu1, self.niu2, omega)
 			v, _, _, _, flops= solver1.SSORIterate(omega)
 			self.flops += flops
 
@@ -237,7 +243,7 @@ class MultiGrid2D:
 		return currSol, vErrors, self.flops
 
 
-# Class encapsulating the Multigrid method for a given 1d Poisson equation instance
+# Class encapsulating the Multigrid method for a given 1D Poisson equation instance
 class MultiGrid:
 
 	def __init__(self, maxN, borderFunction, valueFunction, niu1 = 4, niu2 = 4):
@@ -257,15 +263,15 @@ class MultiGrid:
 			i += 1
 			maxN /= 2
 
-
+	# Helper function for grid level N
 	def getCoordinates(self, row, N):
 		return int(row / (N + 1)), row % (N + 1)
 
+	# Helper function for grid level N
 	def getRow(self, i, j, N):
 		return(i * (N + 1) + j)
 
-
-
+	# Restriction operator
 	def restrict1D(self, r, fineN, coarseN):
 		restr = []
 		for(i, elem) in enumerate(r):
@@ -273,18 +279,7 @@ class MultiGrid:
 				restr.append(elem)
 		return restr
 
-	def restrict(self, r, fineN, coarseN):
-		restr = []
-
-		for(i, elem) in enumerate(r):
-			(x, y) = self.getCoordinates(i, fineN)
-
-			if(x % 2 == 0 and y % 2 == 0):
-				restr.append(elem)
-
-		return restr
-
-
+	# Interpolation operator
 	def interpolate1D(self, r, fineN, coarseN):
 		interp = []
 		for i in range(fineN + 1):
@@ -294,97 +289,19 @@ class MultiGrid:
 				interp.append((r[(i-1)/2]+r[(i+1)/2])/2.0)
 		return interp
 
-	def interpolate(self, r, fineN, coarseN):
-		interp = []
-		flops = 0
-		for i in range((fineN + 1) * (fineN + 1)):
-			(x, y) = self.getCoordinates(i, fineN)
-			
-			if(x % 2 == 0 and y % 2 == 0):
-				index = self.getRow(x / 2, y / 2, coarseN)
-				value = r[index]
-				flops += 1
-
-			elif(x % 2 == 1 and y % 2 == 0):
-				index1 = self.getRow((x - 1) / 2, y / 2, coarseN)
-				index2 = self.getRow((x + 1) / 2, y / 2, coarseN)
-				value = (r[index1] + r[index2]) / 2.0
-				flops += 2
-
-			elif(x % 2 == 0 and y % 2 == 1):
-				index1 = self.getRow(x / 2, (y - 1) / 2, coarseN)
-				index2 = self.getRow(x / 2, (y + 1) / 2, coarseN)
-				value = (r[index1] + r[index2]) / 2.0
-				flops += 2
-
-			else:
-				index1 = self.getRow((x - 1) / 2, (y - 1) / 2, coarseN)
-				index2 = self.getRow((x + 1) / 2, (y - 1) / 2, coarseN)
-				index3 = self.getRow((x - 1) / 2, (y + 1) / 2, coarseN)
-				index4 = self.getRow((x + 1) / 2, (y + 1) / 2, coarseN)
-				value = (r[index1] + r[index2] + r[index3] + r[index4]) / 4.0
-				flops += 4
-
-			if(x == 0 or y == 0 or x == fineN or y == fineN):
-				value = 0
-
-			interp.append(value)
-
-		self.flops += flops
-		return interp
-
-	def restrictTransposeAction(self, r, fineN, coarseN):
-		restr = []
-		flops = 0
-
-		for i in range((coarseN + 1) * (coarseN + 1)):
-			(x, y) = self.getCoordinates(i, coarseN)
-			(x, y) = (2 * x, 2 * y)
-			newEntry = r[self.getRow(x, y, fineN)]
-
-			divideFactor = 1.0
-
-			for (dX, dY) in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-				newX = x + dX
-				newY = y + dY
-				if(0 <= newX and newX <= fineN and 0 <= newY and newY <= fineN):
-					index = self.getRow(newX, newY, fineN)
-					newEntry += 0.5 * r[index]
-					divideFactor += 0.5
-					flops += 2
-
-			for (dX, dY) in [(1, 1), (-1, 1), (-1, -1), (1, -1)]:
-				newX = x + dX
-				newY = y + dY
-				if(0 <= newX and newX <= fineN and 0 <= newY and newY <= fineN):
-					index = self.getRow(newX, newY, fineN)
-					newEntry += 0.25 * r[index]
-					divideFactor += 0.25
-					flops += 2
-			
-			newEntry = 1.0 * newEntry / divideFactor
-			if(divideFactor < 4.0):
-				if(not(x == 0 or y == 0 or x == fineN or y == fineN)):
-					print("Error1")
-
-			if(x == 0 or y == 0 or x == fineN or y == fineN):
-				newEntry = 0.0
-
-			restr.append(newEntry)
-
-		self.flops += flops
-		return restr
-
-
+	# Vcycle scheme
 	def vcycle(self, N, level, f, initSol = [], omega = 1.95):
 		discr = self.discrLevel[level]
 		fSize = len(f)
 
 		if(level == len(self.discrLevel) - 1):
+			# If the discretization is small enough, use a direct solver
 			v = la.solve(discr.M.todense(), f)
 			return v
 
 		else:
+			# If the discretization is still too fine, recursively V-cycle over it
+
 			solver1 = sm.SolverMethods(
 				iterationConstant = self.niu1, 
 				eqDiscretizer = discr, 
@@ -392,15 +309,19 @@ class MultiGrid:
 				initSol = initSol,
 				)
 
-			# omega = 2.0/(1.0 + math.sin(math.pi/N))
-			# omega = 1.95
+			# Omega is the smoothing parameter
 			omega = 1.0
+
+			# Using SSOR as a smoother
 			v, _, _, flops = solver1.SSORIterate(omega)
 			self.flops += flops
+
+			# Sanity checks verifying that the error on the border stays 0
 			if(not(v[0] == 0)):
-				print("ERROR")
+				print("Error code #2")
 			if(not(v[N] == 0)):
-				print("ERROR")
+				print("Error code #3")
+
 			assert(N % 2 == 0)
 			coarseN = N  / 2
 
@@ -410,21 +331,28 @@ class MultiGrid:
 			residual = np.subtract(f, Mv)
 			flops += len(f)
 
+			# Project on a coarser grid the current error
 			coarseResidual = self.restrict1D(residual, N, coarseN)
 
+			# Sanity checks verifying that the error on the border stays 0
 			if(not(coarseResidual[0] == 0)):
-				print("ERROR")
+				print("Error code #4")
 			if(not(coarseResidual[coarseN] == 0)):
-				print("ERROR")
+				print("Error code #5")
 
+			# Recursively V-cycle
 			coarseV = self.vcycle(coarseN, level + 1, coarseResidual)
 
+			# Sanity checks verifying that the error on the border stays 0
 			if(not(coarseV[0] == 0)):
-				print("ERROR")
+				print("Error code #6")
 			if(not(coarseV[coarseN] == 0)):
-				print("ERROR")
+				print("Error code #7")
 
+			# Interpolate the vector obtained recursively to a finer level
 			fineV = self.interpolate1D(coarseV, N, coarseN)
+
+			# Correct the current approximation using the interpolation passed from a coarser level
 			w = np.add(v, fineV)
 			flops += len(v)
 
@@ -435,10 +363,13 @@ class MultiGrid:
 				initSol = w,
 				)
 
+			# Apply extra smoothing to flatten out error components that might have been
+			# introduced in the process so far
 			v2, _, _, _, flops = solver2.SSORIterate(omega)
 			self.flops += flops
 			return v2
 
+	# Iterate t Vcycles in order to get a better approximate of the solution
 	def iterateVCycles(self, t):
 		initSol = []
 		N = self.N
@@ -472,6 +403,9 @@ class MultiGrid:
 		return currSol, vErrors
 
 
+# Multigrid class implemented such that it can easily be adapted
+# as a preconditioner, previous implementations regard it as
+# being a solver on its own and put an emphasis on it
 class MultiGridAsPreconditioner:
 
 	def __init__(self, borderFunction, valueFunction, maxN, bVector = [], niu1 = 2 , niu2 = 2, omega = 1.93):
@@ -604,7 +538,6 @@ class MultiGridAsPreconditioner:
 			return v
 
 		omega = self.omega
-		# omega = 2.0/(1.0 + math.sin(math.pi/N))
 
 		solver1 = sm.SolverMethods(self.niu1, discr, f, initSol)
 		v, _, _, _, flops = solver1.SSORIterate(omega)
@@ -656,7 +589,7 @@ class MultiGridAsPreconditioner:
 
 		return currSol, vErrors, self.flops
 
-
+# MultiGridPrecondCG is the function that performs the Multigrid preconditioned  Conjugate Gradient method
 def MultiGridPrecondCG(borderFunction, valueFunction, N, niu1 =1, niu2 = 1, omega = 1.95):
 	avoidDivByZeroError = 0.000000000001
 	errorDataMGCG = []
@@ -743,8 +676,8 @@ def MultiGridPrecondCG(borderFunction, valueFunction, N, niu1 =1, niu2 = 1, omeg
 	totalFlops += vectorAddSub * len(x) + vectorDotVector * (2*len(x) -1) + matrixDots * (2* NNZ - len(x))
 	return x, absErr, errorDataMGCG, totalFlops
 
-
-
+# JacobiPrecondCG is the function that performs the Jacobi preconditioned  Conjugate Gradient method
+# This has not been included in the project report, as the results of this method are not impressive
 def JacobiPrecondCG(borderFunction, valueFunction, N):
 	avoidDivByZeroError = 0.000000000000000000001
 	errorDataMGCG = []
@@ -808,8 +741,9 @@ def JacobiPrecondCG(borderFunction, valueFunction, N):
 	return x, absErr, errorDataMGCG
 
 
-#Idea : compute finer solutions as we advance in the timestep
-# i.e. 100 iterations for t=0, 120 for t = 1, 140 for t = 2, etc.
+# Using Conjugate Gradient to solve the Heat Equation
+# using the Backward Euler method to generate the RHS at
+# each time step
 def solveHeatEquationForAllTimeSteps(discr):
 	solHeat = discr.initialHeatTimeSolution()
 	valueVector = discr.computeVectorAtTimestep(1, solHeat)

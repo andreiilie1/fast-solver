@@ -1,3 +1,9 @@
+# TimeEquationDiscretizer.py
+
+#  _____________________________________________
+# |USED TO GENERATE HEAT EQUATION DISCRETIZATION|
+# |_____________________________________________|
+
 import numpy as np
 from scipy.sparse import *
 from scipy import *
@@ -9,8 +15,11 @@ STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
 DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
 REMAINDER_MATRIX = 'REMAINDER_MATRIX'
 
-
+# Class encapsulating the discretization arising from
+# a 2D Heat Equation, including methods to get the
+# RHS vector for the Backward Euler method
 class TimeEquationDiscretizer:
+
 	# Current value vector i.e. current value (at current time k * dT) of f(x,y,t) in du/dt - laplace(u) = f
 	def __init__(self, N, T, borderTimeFunction, rhsHeatEquationFunction, initialHeatTimeFunction):
 		self.N = N
@@ -117,22 +126,9 @@ class TimeEquationDiscretizer:
 			initSol.append(self.initialHeatTimeFunction(x, y, 0))
 		return initSol
 
-	# # Value of f(x,y,t) in du/dt - laplace(u) = f
-	# def rhsFunctionHeatTimeEquation(self, x, y, t):
-	# 	value = 0
-	# 	return value
-
-
-	# # Value of the border function on values x,y and at time t
-	# # used for the equation which also introduces time
-	# def borderTimeFunction(self, x, y, t):
-	# 	# Assert (x,y) is on border
-	# 	value = 1
-	# 	return value
-
 
 	# Compute M and valueVector2D (in Mx = valueVector2D) and
-	# computer L, U, D (lower, strictly upper and diagonal matrices of M)
+	# compute L, U, D (lower, strictly upper and diagonal matrices of M)
 	def computeMatrixHeatTimeEquation(self):
 		for currentRow in range((self.N + 1) * (self.N + 1)):
 			self.computeRowHeatTimeEquation(currentRow)

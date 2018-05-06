@@ -1,13 +1,18 @@
+# SolverMethods.py
+
+#  ______________________________________
+# |CLASSIC CUSTOMIZABLE ITERATIVE SCHEMES|
+# |______________________________________|
+
 import numpy as np
 from scipy.sparse import *
 from scipy import *
 import math
 
 tol = 0.00001
-# https://www.ibiblio.org/e-notes/webgl/gpu/mg/poisson_rel.html : eigenvalues for the poisson matrix
-class SolverMethods:
-	# Iterative methods for solving a linear system
 
+# Class encapsulating iterative methods for solving a linear system
+class SolverMethods:
 	def __init__(self, iterationConstant, eqDiscretizer, b = [], initSol = [], actualSol = [], initB = []):
 		self.iterationConstant = iterationConstant
 		self.M = eqDiscretizer.M
@@ -23,6 +28,7 @@ class SolverMethods:
 		self.initSol = initSol
 		self.actualSol = actualSol
 
+	# Jacobi iterative method
 	def JacobiIterate(self, dampFactor = 1.0):
 		errorDataJacobi = []
 		x = []
@@ -34,7 +40,7 @@ class SolverMethods:
 		else:
 			x = self.initSol
 
-		# Iterate constant number of times (TODO: iterate while big error Mx-b)
+		# Iterate constant number of times
 		for i in range(iterationConstant):
 			err = np.subtract(self.M.dot(x), self.b)
 			absErr = np.linalg.norm(err) / (np.linalg.norm(self.b))
@@ -57,6 +63,8 @@ class SolverMethods:
 		errorDataJacobi.append(math.log(absErr))
 		return x, absErr, errorDataJacobi, err
 
+	# Jacobi iterative method v2, these 2 implementations have been used
+	# to decide the more efficient way of implementing it
 	def JacobiIterate2(self, omega = 1.0):
 		errorDataJacobi = []
 		x = []
@@ -104,7 +112,7 @@ class SolverMethods:
 		errorDataJacobi.append(math.log(absErr))
 		return x, absErr, errorDataJacobi, err
 
-
+	# Gauss Seidel iterative method
 	def GaussSeidelIterate(self, omega = 1.0):
 		errorDataGaussSeidel = []
 		x = []
@@ -144,9 +152,6 @@ class SolverMethods:
 				xNew[j] = x[j] + omega * (rowSum - x[j])
 				flops += 3
 
-			# if np.allclose(x, xNew, rtol=1e-6):
-			# 	 break
-
 			if(absErr < tol):
 				break
 
@@ -156,6 +161,7 @@ class SolverMethods:
 		print("Iterations: ", len(errorDataGaussSeidel) - 1)
 		return x, absErr, errorDataGaussSeidel, err
 
+	# SSOR Iteartive method
 	def SSORIterate(self, omega = 1.0, debugOn = False):
 		errorDataSSOR = []
 		x = []
@@ -236,11 +242,9 @@ class SolverMethods:
 		err = np.subtract(self.b, self.M.dot(x))
 		absErr = np.linalg.norm(err) / np.linalg.norm(self.b)
 
-		# print("Flops: ",flops)
-		# print("Iterations: ", len(errorDataSSOR) - 1)
-
 		return x, absErr, errorDataSSOR, err, flops
 
+	# Conjugate Gradient using the Hestenes Stiefel formulation
 	def ConjugateGradientsHS(self):
 		flops = 0
 		matrixDots = 0
@@ -320,10 +324,10 @@ class SolverMethods:
 		nonZero = M.nonzero()
 		NNZ = len(nonZero[0])
 		flops += vectorAddSub * len(x) + vectorDotVector * (2 * len(x) - 1) + matrixDots * (2 * NNZ - len(x))
-		print("Iterations: ", len(errorDataConjugateGradients) - 1)
-		print("Flops: ", flops)
+
 		return x, relativeResidualErr, errorDataConjugateGradients
 
+	# Steepest descent method
 	def SteepestDescent(self):
 		avoidDivByZeroError = 0.0000000000000000001
 
@@ -384,6 +388,5 @@ class SolverMethods:
 			divide = 1.0
 		absErr = np.linalg.norm(err) / divide
 		errorDataSteepestDescent.append(math.log(absErr))
-		print("Flops: ",flops)
-		print("Iterations: ", len(errorDataSteepestDescent) - 1)
+
 		return x, absErr, errorDataSteepestDescent

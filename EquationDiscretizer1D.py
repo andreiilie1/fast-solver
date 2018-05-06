@@ -1,3 +1,9 @@
+# EquationDiscretizer1D.py
+
+#  ___________________________________________________
+# |USED TO GENERATE POISSON 1D EQUATION DISCRETIZATION|
+# |___________________________________________________|
+
 import numpy as np
 from scipy.sparse import *
 from scipy import *
@@ -9,7 +15,8 @@ STRICTLY_UPPER_MATRIX = 'STRICTLY_UPPER_MATRIX'
 DIAGONAL_MATRIX = 'DIAGONAL_MATRIX'
 REMAINDER_MATRIX = 'REMAINDER_MATRIX'
 
-
+# Class encapsulating the sparse matrix
+# arising from discretizing a 1D model problem
 class EquationDiscretizer1D:
 
 	def __init__(self, N, borderFunction, valueFunction, printMatrix = False):

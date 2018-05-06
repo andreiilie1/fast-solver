@@ -1,5 +1,8 @@
-# ___________________________________
-# USED FOR AUXILLIARY PLOTS IN THE THESIS
+# posdefplot.py
+
+#  _______________________________________
+# |USED FOR AUXILLIARY PLOTS IN THE THESIS|
+# |_______________________________________|
 
 from mpl_toolkits import mplot3d
 import numpy as np
@@ -270,7 +273,6 @@ def plotProjectedSine():
 	plt.show()
 
 def plotGrid():
-	 # markerfacecolor='white', markeredgecolor='white', marker='o', markersize=4, alpha=1
 	 plt.plot([0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0],[0.0, 0.5, 1.0, 0.0, 0.5, 1.0, 0.0, 0.5, 1.0], 'ro', marker = 'o', markersize = 10, markerfacecolor='blue', markeredgecolor='blue')
 	 plt.plot([0, 0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.75, 0.75, 0.75, 0.75, 0.75, 1, 1], [0.25, 0.75, 0, 0.25, 0.5, 0.75, 1, 0.25, 0.75, 0, 0.25, 0.5, 0.75, 1, 0.25, 0.75], 'ro', marker ='x', markersize = 10)
 	 plt.show()
@@ -305,8 +307,9 @@ def plotRestrictionExample():
 
 	discrFunction1 = [0.0, 0.1, -0.1, 0.15, -0.2, 0.1, -0.13, 0.09, 0.0]
 	discrFunction2 = []
+
 	for i in range(len(discrFunction1)):
-		if(i%2 == 0):
+		if(i % 2 == 0):
 			discrFunction2.append(discrFunction1[i])
 
 	discrFunction3 = []
@@ -314,7 +317,7 @@ def plotRestrictionExample():
 		if(i == 0 or i == len(discrFunction1)-1):
 			discrFunction3.append(0.0)
 		elif(i%2 == 0):
-			discrFunction3.append((2 * discrFunction1[i] + discrFunction1[i-1]+discrFunction1[i+1])/4.0)
+			discrFunction3.append((2 * discrFunction1[i] + discrFunction1[i-1]+discrFunction1[i+1]) / 4.0)
 
 	plt.subplot(311)
 	plt.ylim(-0.22, 0.22)
@@ -337,7 +340,7 @@ def plotVCycle():
 	plt.axis('off')
 	h = 0.1
 	plt.xlim(0,6)
-	plt.ylim(0.5,3.5)
+	plt.ylim(0.5, 3.5)
 	xs = [1, 2, 3, 4, 5]
 	ys = [3, 2, 1, 2, 3]
 	plt.plot(xs, ys)
@@ -354,17 +357,17 @@ def plotVCycle():
 	plt.text(3.5 + 1.5 * h, 1.5 - h, "$\mathbf{I}_{4h}^{2h}$", fontsize = 20)
 	plt.text(4.5 + 1.5 * h, 2.5 - h, "$\mathbf{I}_{2h}^{h}$", fontsize = 20)
 
-	plt.arrow(1.0,3.0,0.8,-0.8,head_width=0.1, head_length=0.2)
-	plt.arrow(2.0,2.0,0.8,-0.8,head_width=0.1, head_length=0.2)
+	plt.arrow(1.0, 3.0, 0.8, -0.8, head_width = 0.1, head_length = 0.2)
+	plt.arrow(2.0, 2.0, 0.8, -0.8, head_width = 0.1, head_length = 0.2)
 
-	plt.arrow(3.0,1.0,0.8,0.8,head_width=0.1, head_length=0.2)
-	plt.arrow(4.0,2.0,0.8,0.8,head_width=0.1, head_length=0.2)
+	plt.arrow(3.0, 1.0, 0.8, 0.8, head_width = 0.1, head_length = 0.2)
+	plt.arrow(4.0, 2.0, 0.8, 0.8, head_width = 0.1, head_length = 0.2)
 
-	plt.arrow(1.05, 3.0, 3.8, 0.0, head_width=0.05, head_length=0.05, color = "red")
-	plt.arrow(2.05, 2.0, 1.8, 0.0, head_width=0.05, head_length=0.05, color = "red")
+	plt.arrow(1.05, 3.0, 3.8, 0.0, head_width = 0.05, head_length = 0.05, color = "red")
+	plt.arrow(2.05, 2.0, 1.8, 0.0, head_width = 0.05, head_length = 0.05, color = "red")
 
-	plt.text(3 - 5*h, 3 - h, "Correct approximation on $\Omega^{h}$", color = "red", fontsize = 13)
-	plt.text(3 - 5*h, 2 - h, "Correct approximation on $\Omega^{2h}$", color = "red", fontsize = 13)
+	plt.text(3 - 5 * h, 3 - h, "Correct approximation on $\Omega^{h}$", color = "red", fontsize = 13)
+	plt.text(3 - 5 * h, 2 - h, "Correct approximation on $\Omega^{2h}$", color = "red", fontsize = 13)
 
 	plt.show()
 

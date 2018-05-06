@@ -1,5 +1,10 @@
-import math
+# FunctionExamples.py
 
+#  ________________________________________
+# |USED FOR SAMPLE MODEL PROBLEMS FUNCTIONS|
+# |________________________________________|
+
+import math
 
 # Function examples for a simple equation discretizer
 
